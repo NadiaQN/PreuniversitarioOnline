@@ -1,18 +1,32 @@
 import React from "react";
 import { TouchableOpacity, Text, StyleSheet, ViewStyle } from "react-native";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { theme } from "../theme/theme";
+import { useDevice } from "../hooks/useDevice";
 
 interface ButtonProps {
   title: string;
   onPress: () => void;
   variant?: "primary" | "success" | "error" | "warning";
   outline?: boolean;
-  width?: number; // Opción para forzar un tamaño específico
+  fullWidth?: boolean;
   style?: ViewStyle;
+  iconName?: string;
+  iconOnly?: boolean;
 }
 
-export default function CustomButton({ title, onPress, variant = "primary", outline = false, width, style }: ButtonProps) {
-  // Definir colores dinámicos
+export default function CustomButton({
+  title,
+  onPress,
+  variant = "primary",
+  outline = false,
+  fullWidth = false,
+  style,
+  iconName,
+  iconOnly,
+}: ButtonProps) {
+  const { isMobile } = useDevice();
+
   const textColor = outline ? theme.colors[variant] : theme.colors.textLight;
   const borderColor = outline ? theme.colors[variant] : "transparent";
 
@@ -23,31 +37,37 @@ export default function CustomButton({ title, onPress, variant = "primary", outl
         {
           borderColor,
           height: 48,
-          width: width ?? "auto",
-          paddingHorizontal: 16,
-          flexGrow: width ? 0 : 1,
+          minWidth: iconOnly ? 48 : "auto",
+          width: fullWidth ? "100%" : "auto",
+          paddingHorizontal: iconOnly ? 12 : 16,
         },
         outline ? styles.outline : styles[variant],
         style,
       ]}
       onPress={onPress}
     >
-      <Text style={[styles.text, { color: textColor }]}>{title}</Text>
+      {iconName && <Icon name={iconName} size={20} color={textColor} />}
+      {!iconOnly && (
+        <Text numberOfLines={1} style={[styles.text, { color: textColor }]}>
+          {title}
+        </Text>
+      )}
     </TouchableOpacity>
   );
 }
 
 const styles = StyleSheet.create({
   button: {
-    paddingVertical: 8,
-    borderRadius: 8,
+    flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
+    borderRadius: 8,
     borderWidth: 2,
   },
   text: {
     fontSize: theme.sizes.md,
     fontFamily: theme.fonts.bold,
+    marginLeft: 8,
   },
   primary: { backgroundColor: theme.colors.primary },
   success: { backgroundColor: theme.colors.success },
@@ -57,7 +77,3 @@ const styles = StyleSheet.create({
     backgroundColor: "transparent",
   },
 });
-
-
-
-

@@ -1,8 +1,6 @@
-import React from "react";
-import { TextInput, StyleSheet, Text, View } from "react-native";
-import { colors } from "../theme/colors";
-import { fonts } from "../theme/fonts";
-import { sizes } from "../theme/sizes";
+import React, { useState } from "react";
+import { View, Text, TextInput, StyleSheet } from "react-native";
+import { theme } from "../theme/theme";
 
 interface InputProps {
   label: string;
@@ -13,16 +11,25 @@ interface InputProps {
 }
 
 export default function CustomInput({ label, placeholder, value, onChangeText, secureTextEntry }: InputProps) {
+  const [isFocused, setIsFocused] = useState(false);
+
   return (
     <View style={styles.container}>
       <Text style={styles.label}>{label}</Text>
       <TextInput
-        style={styles.input}
+        style={[
+          styles.input,
+          { 
+            borderColor: isFocused ? theme.colors.primary : theme.colors.border,
+          }
+        ]}
         placeholder={placeholder}
-        placeholderTextColor={colors.textDark}
+        placeholderTextColor={theme.colors.textDark}
         value={value}
         onChangeText={onChangeText}
         secureTextEntry={secureTextEntry}
+        onFocus={() => setIsFocused(true)}
+        onBlur={() => setIsFocused(false)}
       />
     </View>
   );
@@ -30,24 +37,22 @@ export default function CustomInput({ label, placeholder, value, onChangeText, s
 
 const styles = StyleSheet.create({
   container: {
-    width: "80%",
-    marginBottom: 10,
+    width: "100%",
+    marginBottom: 16,
   },
   label: {
-    fontSize: sizes.sm,
-    fontFamily: fonts.bold,
-    color: colors.textDark,
-    marginBottom: 5,
+    fontSize: theme.sizes.md,
+    fontFamily: theme.fonts.bold, 
+    color: theme.colors.textDark,
+    marginBottom: 4,
   },
   input: {
-    width: "100%",
-    padding: 10,
-    borderWidth: 1,
-    borderColor: colors.primary,
-    borderRadius: 5,
-    backgroundColor: colors.textLight,
-    color: colors.textDark,
-    fontSize: sizes.md,
-    fontFamily: fonts.regular,
+    height: 48,
+    borderWidth: 2,
+    borderRadius: 8,
+    paddingHorizontal: 12,
+    fontSize: theme.sizes.md,
+    fontFamily: theme.fonts.regular,
+    backgroundColor: theme.colors.textLight,
   },
 });

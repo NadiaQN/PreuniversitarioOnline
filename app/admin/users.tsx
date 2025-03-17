@@ -1,8 +1,8 @@
 import { View, Text, StyleSheet, FlatList } from "react-native";
 import { theme } from "../../theme/theme";
 import CustomButton from "../../components/Button";
+import { useDevice } from "../../hooks/useDevice";
 
-// Mock de usuarios
 const users = [
   { id: "1", name: "Juan Pérez", role: "Estudiante" },
   { id: "2", name: "María González", role: "Tutor" },
@@ -10,6 +10,8 @@ const users = [
 ];
 
 export default function ManageUsers() {
+  const { isMobile } = useDevice();
+
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Gestión de Usuarios</Text>
@@ -25,18 +27,21 @@ export default function ManageUsers() {
             <View style={styles.buttonContainer}>
               <CustomButton
                 title="Eliminar"
-                onPress={() => {}}
+                onPress={() => { }}
                 variant="error"
                 outline
-                style={styles.button}
+                iconName="trash-can-outline"
+                iconOnly={isMobile}
               />
               <CustomButton
                 title="Editar"
-                onPress={() => {}}
+                onPress={() => { }}
                 variant="primary"
-                style={styles.button}
+                iconName="pencil-outline"
+                iconOnly={isMobile}
               />
             </View>
+
           </View>
         )}
       />
@@ -69,7 +74,7 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
   },
   userInfo: {
-    flex: 4
+    flex: 3
   },
   userName: {
     fontSize: theme.sizes.md,
@@ -87,9 +92,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "flex-end",
     gap: 8,
-  },
-  button: {
-    width: 48,
-  },
+  }
 });
 
