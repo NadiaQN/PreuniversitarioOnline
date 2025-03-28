@@ -1,106 +1,113 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, FlatList, TouchableOpacity } from "react-native";
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, FlatList, TouchableOpacity, ActivityIndicator } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as DocumentPicker from "expo-document-picker";
 import CustomInput from "../../components/Input";
 import CustomButton from "../../components/Button";
+import MessageModal from "../../components/MessageModal";
 import { theme } from "../../theme/theme";
-import { mockCourses, updateMockCourse, addMockCourse } from "../../mocks/courses";
+import { addCourse, updateCourse, loadCourses } from "../../services/coursesService";
+import { Course } from "../../models/Courses";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
-export default function CoursesForm() {
+export default function CourseForm() {
   const router = useRouter();
   const { courseId } = useLocalSearchParams<{ courseId?: string }>();
 
+  const [courses, setCourses] = useState<Course[]>([]);
   const [courseName, setCourseName] = useState("");
   const [description, setDescription] = useState("");
   const [objectives, setObjectives] = useState("");
   const [files, setFiles] = useState<{ name: string; uri: string; type: string }[]>([]);
+  const [modalVisible, setModalVisible] = useState(false);
+  const [modalMessage, setModalMessage] = useState("");
+  const [modalType, setModalType] = useState<"success" | "error">("success");
+  const [isLoading, setIsLoading] = useState(true);
 
-  // Estado de errores
-  const [errors, setErrors] = useState<{ courseName?: string; description?: string; objectives?: string }>({});
-
-  // 🔹 Cargar datos si estamos editando un curso
   useEffect(() => {
+    const storedCourses = loadCourses();
+    setCourses(storedCourses);
+  
     if (courseId) {
-      const course = mockCourses.find((c) => c.id === courseId);
-      if (course) {
-        setCourseName(course.name);
-        setDescription(course.description);
-        setObjectives(course.objectives);
-        setFiles(course.materials || []);
+      const loadedCourse = storedCourses.find((c) => c.id === courseId);
+      if (loadedCourse) {
+        setCourseName(loadedCourse.name);
+        setDescription(loadedCourse.description);
+        setObjectives(loadedCourse.objectives);
+        setFiles(loadedCourse.materials && loadedCourse.materials.length > 0 ? loadedCourse.materials : []); // 🔹 Aseguramos que los archivos se carguen
       }
     }
+  
+    setIsLoading(false);
   }, [courseId]);
+  
+  const handleSubmit = async () => {
+    if (!courseName || !description || !objectives) {
+      setModalMessage("Todos los campos son obligatorios");
+      setModalType("error");
+      setModalVisible(true);
+      return;
+    }
 
-  // 🔹 Seleccionar archivo (PDF, imagen, video)
+    if (courseId) {
+      await updateCourse(courseId, { name: courseName, description, objectives, materials: files });
+      setModalMessage("Curso actualizado correctamente");
+    } else {
+      await addCourse({ name: courseName, description, objectives, materials: files });
+      setModalMessage("Curso agregado correctamente");
+    }
+
+    setModalType("success");
+    setModalVisible(true);
+
+    setTimeout(() => router.push("/admin/courses"), 3000);
+  };
+
+  // 🔹 Seleccionar archivo PDF o imagen
   const handleSelectFile = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: "*/*",
+        type: ["application/pdf", "image/*"],
+        multiple: false,
       });
 
       if (result.assets && result.assets.length > 0) {
         const file = result.assets[0];
-
-        // 🔹 Usar setFiles con el estado previo para evitar que se pierdan archivos
-        setFiles((prevFiles) => [...prevFiles, { name: file.name, uri: file.uri, type: file.mimeType || "application/octet-stream" }]);
+        setFiles([...files, { name: file.name, uri: file.uri, type: file.mimeType || "application/pdf" }]);
       }
     } catch (error) {
       console.error("Error al seleccionar archivo:", error);
     }
   };
 
-  // 🔹 Eliminar un archivo adjunto
+  // 🔹 Eliminar un archivo
   const handleRemoveFile = (fileName: string) => {
-    setFiles((prevFiles) => prevFiles.filter((file) => file.name !== fileName));
+    setFiles(files.filter((file) => file.name !== fileName));
   };
+
+  if (isLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={theme.colors.primary} />
+      </View>
+    );
+  }
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
-      {/* 🔹 Botón Volver */}
+      {/* 🔹 Botón de Volver */}
       <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Text style={styles.backText}>← Volver</Text>
+        <Icon name="arrow-left" size={24} color={theme.colors.textDark} />
       </TouchableOpacity>
 
       <Text style={styles.title}>{courseId ? "Editar Curso" : "Agregar Curso"}</Text>
 
-      <View style={styles.inputContainer}>
-        <CustomInput
-          label="Nombre del Curso"
-          placeholder="Ingrese el nombre"
-          value={courseName}
-          onChangeText={(text) => setCourseName(text)}
-          style={errors.courseName ? styles.errorInput : undefined}
-        />
-        {errors.courseName && <Text style={styles.errorText}>{errors.courseName}</Text>}
-      </View>
+      <CustomInput label="Nombre del Curso" placeholder="Ingrese el nombre del curso" value={courseName} onChangeText={setCourseName} />
+      <CustomInput label="Descripción del Curso" placeholder="Ingrese la descripción" value={description} onChangeText={setDescription} multiline />
+      <CustomInput label="Objetivos del Curso" placeholder="Ingrese los objetivos" value={objectives} onChangeText={setObjectives} multiline />
 
-      <View style={styles.inputContainer}>
-        <CustomInput
-          label="Descripción del Curso"
-          placeholder="Ingrese una descripción"
-          value={description}
-          onChangeText={(text) => setDescription(text)}
-          multiline
-          style={errors.description ? styles.errorInput : undefined}
-        />
-        {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
-      </View>
-
-      <View style={styles.inputContainer}>
-        <CustomInput
-          label="Objetivos del Curso"
-          placeholder="Ingrese los objetivos"
-          value={objectives}
-          onChangeText={(text) => setObjectives(text)}
-          multiline
-          style={errors.objectives ? styles.errorInput : undefined}
-        />
-        {errors.objectives && <Text style={styles.errorText}>{errors.objectives}</Text>}
-      </View>
-
-      {/* 🔹 Botón para Adjuntar Archivos */}
-      <CustomButton title="Adjuntar Archivo" onPress={handleSelectFile} variant="primary" iconName="file-plus-outline" />
+      {/* 🔹 Botón para Adjuntar Archivo */}
+      <CustomButton title="Adjuntar Material" onPress={handleSelectFile} variant="primary" iconName="file-plus-outline" />
 
       {/* 🔹 Mostrar Archivos Adjuntos */}
       <FlatList
@@ -110,39 +117,20 @@ export default function CoursesForm() {
           <View style={styles.fileItem}>
             <Text style={styles.fileText}>{item.name}</Text>
             <TouchableOpacity onPress={() => handleRemoveFile(item.name)}>
-              <Text style={styles.deleteText}>Eliminar</Text>
+              <Icon name="trash-can-outline" size={24} color={theme.colors.error} />
             </TouchableOpacity>
           </View>
         )}
       />
 
-      {/* 🔹 Botones de Guardar y Cancelar */}
+      {/* 🔹 Botones de Cancelar y Guardar */}
       <View style={styles.buttonContainer}>
-        <CustomButton title="Cancelar" onPress={() => router.push("/admin/courses")} variant="primary" outline />
-        <CustomButton
-          title={courseId ? "Actualizar Curso" : "Agregar Curso"}
-          onPress={() => {
-            if (!courseName.trim() || !description.trim() || !objectives.trim()) {
-              setErrors({
-                courseName: !courseName.trim() ? "El nombre del curso es obligatorio." : undefined,
-                description: !description.trim() ? "La descripción es obligatoria." : undefined,
-                objectives: !objectives.trim() ? "Los objetivos son obligatorios." : undefined,
-              });
-              return;
-            }
-
-            if (courseId) {
-              updateMockCourse(courseId, { name: courseName, description, objectives, materials: files });
-            } else {
-              addMockCourse({ name: courseName, description, objectives, materials: files });
-            }
-
-            router.replace("/admin/courses");
-          }}
-          variant="success"
-          disabled={!courseName.trim() || !description.trim() || !objectives.trim()}
-        />
+        <CustomButton title="Cancelar" onPress={() => router.back()} variant="primary" outline />
+        <CustomButton title={courseId ? "Actualizar Curso" : "Agregar Curso"} onPress={handleSubmit} variant="success" />
       </View>
+
+      {/* 🔹 Modal de Confirmación */}
+      <MessageModal visible={modalVisible} message={modalMessage} type={modalType} onClose={() => setModalVisible(false)} />
     </KeyboardAvoidingView>
   );
 }
@@ -152,18 +140,6 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: theme.colors.backgroundLight,
-    justifyContent: "flex-start",
-  },
-  backButton: {
-    position: "absolute",
-    top: 20,
-    left: 20,
-    zIndex: 10,
-  },
-  backText: {
-    fontSize: theme.sizes.md,
-    fontFamily: theme.fonts.bold,
-    color: theme.colors.primary,
   },
   title: {
     fontSize: theme.sizes.lg,
@@ -172,17 +148,11 @@ const styles = StyleSheet.create({
     marginBottom: 16,
     textAlign: "center",
   },
-  inputContainer: {
-    marginBottom: 16,
-  },
-  errorText: {
-    color: theme.colors.error,
-    fontSize: theme.sizes.sm,
-    marginTop: 4,
-    fontFamily: theme.fonts.regular,
-  },
-  errorInput: {
-    borderColor: theme.colors.error,
+  backButton: {
+    position: "absolute",
+    top: 20,
+    left: 20,
+    zIndex: 10,
   },
   fileItem: {
     flexDirection: "row",
@@ -198,14 +168,14 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.regular,
     color: theme.colors.textDark,
   },
-  deleteText: {
-    fontSize: theme.sizes.sm,
-    fontFamily: theme.fonts.bold,
-    color: theme.colors.error,
-  },
   buttonContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 20,
+    marginTop: 16,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
 });
