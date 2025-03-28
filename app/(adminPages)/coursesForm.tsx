@@ -1,25 +1,25 @@
 import React, { useEffect, useState } from "react";
-import { 
-  View, Text, StyleSheet, Alert, KeyboardAvoidingView, Platform, FlatList, TouchableOpacity, TextInput 
-} from "react-native";
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, FlatList, TouchableOpacity } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import * as DocumentPicker from "expo-document-picker";
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import CustomInput from "../../components/Input";
 import CustomButton from "../../components/Button";
 import { theme } from "../../theme/theme";
-import { mockCourses } from "../../mocks/courses";
-import { Course } from "@/models/Courses";
+import { mockCourses, updateMockCourse, addMockCourse } from "../../mocks/courses";
 
-export default function CourseForm() {
+export default function CoursesForm() {
   const router = useRouter();
   const { courseId } = useLocalSearchParams<{ courseId?: string }>();
 
   const [courseName, setCourseName] = useState("");
   const [description, setDescription] = useState("");
   const [objectives, setObjectives] = useState("");
-  const [files, setFiles] = useState<{ name: string; uri: string }[]>([]);
+  const [files, setFiles] = useState<{ name: string; uri: string; type: string }[]>([]);
 
+  // Estado de errores
+  const [errors, setErrors] = useState<{ courseName?: string; description?: string; objectives?: string }>({});
+
+  // 🔹 Cargar datos si estamos editando un curso
   useEffect(() => {
     if (courseId) {
       const course = mockCourses.find((c) => c.id === courseId);
@@ -28,96 +28,79 @@ export default function CourseForm() {
         setDescription(course.description);
         setObjectives(course.objectives);
         setFiles(course.materials || []);
-      } else {
-        Alert.alert("Error", "Curso no encontrado");
       }
     }
   }, [courseId]);
 
-  const handleSubmit = () => {
-    if (!courseName || !description || !objectives) {
-      Alert.alert("Error", "Por favor completa todos los campos");
-      return;
-    }
-
-    let courses: Course[] = [...mockCourses];
-
-    if (courseId) {
-      courses = courses.map(course =>
-        course.id === courseId
-          ? { ...course, name: courseName, description, objectives, materials: files }
-          : course
-      );
-      Alert.alert("Éxito", "Curso actualizado correctamente");
-    } else {
-      courses.push({
-        id: String(courses.length + 1),
-        name: courseName,
-        description,
-        objectives,
-        materials: files,
-      });
-      Alert.alert("Éxito", "Curso agregado correctamente");
-    }
-
-    router.push("/admin/courses");
-  };
-
-  // 🔹 Seleccionar archivo PDF, Video o Imagen
+  // 🔹 Seleccionar archivo (PDF, imagen, video)
   const handleSelectFile = async () => {
     try {
       const result = await DocumentPicker.getDocumentAsync({
-        type: ["application/pdf", "video/*", "image/*"], 
-        multiple: false,
+        type: "*/*",
       });
 
       if (result.assets && result.assets.length > 0) {
-        const file = result.assets[0]; 
-        setFiles([...files, { name: file.name, uri: file.uri }]);
+        const file = result.assets[0];
+
+        // 🔹 Usar setFiles con el estado previo para evitar que se pierdan archivos
+        setFiles((prevFiles) => [...prevFiles, { name: file.name, uri: file.uri, type: file.mimeType || "application/octet-stream" }]);
       }
     } catch (error) {
       console.error("Error al seleccionar archivo:", error);
     }
   };
 
-  // 🔹 Eliminar un archivo
+  // 🔹 Eliminar un archivo adjunto
   const handleRemoveFile = (fileName: string) => {
-    setFiles(files.filter((file) => file.name !== fileName));
+    setFiles((prevFiles) => prevFiles.filter((file) => file.name !== fileName));
   };
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
-      {/* 🔹 Icono de Volver Atrás */}
+      {/* 🔹 Botón Volver */}
       <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Icon name="arrow-left" size={28} color={theme.colors.textDark} />
+        <Text style={styles.backText}>← Volver</Text>
       </TouchableOpacity>
 
       <Text style={styles.title}>{courseId ? "Editar Curso" : "Agregar Curso"}</Text>
 
-      <CustomInput label="Nombre del Curso" placeholder="Ingrese el nombre del curso" value={courseName} onChangeText={setCourseName} />
+      <View style={styles.inputContainer}>
+        <CustomInput
+          label="Nombre del Curso"
+          placeholder="Ingrese el nombre"
+          value={courseName}
+          onChangeText={(text) => setCourseName(text)}
+          style={errors.courseName ? styles.errorInput : undefined}
+        />
+        {errors.courseName && <Text style={styles.errorText}>{errors.courseName}</Text>}
+      </View>
 
-      {/* 🔹 Input más alto para Descripción */}
-      <Text style={styles.label}>Descripción del Curso</Text>
-      <TextInput
-        style={[styles.input, styles.textArea]}
-        placeholder="Ingrese una breve descripción"
-        value={description}
-        onChangeText={setDescription}
-        multiline
-      />
+      <View style={styles.inputContainer}>
+        <CustomInput
+          label="Descripción del Curso"
+          placeholder="Ingrese una descripción"
+          value={description}
+          onChangeText={(text) => setDescription(text)}
+          multiline
+          style={errors.description ? styles.errorInput : undefined}
+        />
+        {errors.description && <Text style={styles.errorText}>{errors.description}</Text>}
+      </View>
 
-      {/* 🔹 Input más alto para Objetivos */}
-      <Text style={styles.label}>Objetivos del Curso</Text>
-      <TextInput
-        style={[styles.input, styles.textArea]}
-        placeholder="Ingrese los objetivos del curso"
-        value={objectives}
-        onChangeText={setObjectives}
-        multiline
-      />
+      <View style={styles.inputContainer}>
+        <CustomInput
+          label="Objetivos del Curso"
+          placeholder="Ingrese los objetivos"
+          value={objectives}
+          onChangeText={(text) => setObjectives(text)}
+          multiline
+          style={errors.objectives ? styles.errorInput : undefined}
+        />
+        {errors.objectives && <Text style={styles.errorText}>{errors.objectives}</Text>}
+      </View>
 
-      {/* 🔹 Botón para Adjuntar Materiales */}
-      <CustomButton title="Adjuntar Material" onPress={handleSelectFile} variant="primary" iconName="file-plus-outline" />
+      {/* 🔹 Botón para Adjuntar Archivos */}
+      <CustomButton title="Adjuntar Archivo" onPress={handleSelectFile} variant="primary" iconName="file-plus-outline" />
 
       {/* 🔹 Mostrar Archivos Adjuntos */}
       <FlatList
@@ -127,16 +110,38 @@ export default function CourseForm() {
           <View style={styles.fileItem}>
             <Text style={styles.fileText}>{item.name}</Text>
             <TouchableOpacity onPress={() => handleRemoveFile(item.name)}>
-              <Icon name="close-circle" size={20} color={theme.colors.error} />
+              <Text style={styles.deleteText}>Eliminar</Text>
             </TouchableOpacity>
           </View>
         )}
       />
 
-      {/* 🔹 Botones de Guardar y Cancelar (Alineados en fila) */}
+      {/* 🔹 Botones de Guardar y Cancelar */}
       <View style={styles.buttonContainer}>
-        <CustomButton title="Cancelar" onPress={() => router.back()} variant="error" outline />
-        <CustomButton title="Guardar Curso" onPress={handleSubmit} variant="success" />
+        <CustomButton title="Cancelar" onPress={() => router.push("/admin/courses")} variant="primary" outline />
+        <CustomButton
+          title={courseId ? "Actualizar Curso" : "Agregar Curso"}
+          onPress={() => {
+            if (!courseName.trim() || !description.trim() || !objectives.trim()) {
+              setErrors({
+                courseName: !courseName.trim() ? "El nombre del curso es obligatorio." : undefined,
+                description: !description.trim() ? "La descripción es obligatoria." : undefined,
+                objectives: !objectives.trim() ? "Los objetivos son obligatorios." : undefined,
+              });
+              return;
+            }
+
+            if (courseId) {
+              updateMockCourse(courseId, { name: courseName, description, objectives, materials: files });
+            } else {
+              addMockCourse({ name: courseName, description, objectives, materials: files });
+            }
+
+            router.replace("/admin/courses");
+          }}
+          variant="success"
+          disabled={!courseName.trim() || !description.trim() || !objectives.trim()}
+        />
       </View>
     </KeyboardAvoidingView>
   );
@@ -147,13 +152,18 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: theme.colors.backgroundLight,
-    justifyContent: "center",
+    justifyContent: "flex-start",
   },
   backButton: {
     position: "absolute",
     top: 20,
     left: 20,
-    zIndex: 10, 
+    zIndex: 10,
+  },
+  backText: {
+    fontSize: theme.sizes.md,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.primary,
   },
   title: {
     fontSize: theme.sizes.lg,
@@ -161,28 +171,18 @@ const styles = StyleSheet.create({
     color: theme.colors.primary,
     marginBottom: 16,
     textAlign: "center",
-    marginTop: 50, 
   },
-  label: {
-    fontSize: theme.sizes.md,
-    fontFamily: theme.fonts.bold,
-    color: theme.colors.textDark,
-    marginBottom: 4,
-  },
-  input: {
-    height: 48,
-    borderWidth: 2,
-    borderColor: theme.colors.border,
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    fontSize: theme.sizes.md,
-    fontFamily: theme.fonts.regular,
-    backgroundColor: theme.colors.textLight,
+  inputContainer: {
     marginBottom: 16,
   },
-  textArea: {
-    height: 120, // ✅ Hace los inputs de descripción y objetivos más altos
-    textAlignVertical: "top",
+  errorText: {
+    color: theme.colors.error,
+    fontSize: theme.sizes.sm,
+    marginTop: 4,
+    fontFamily: theme.fonts.regular,
+  },
+  errorInput: {
+    borderColor: theme.colors.error,
   },
   fileItem: {
     flexDirection: "row",
@@ -198,10 +198,14 @@ const styles = StyleSheet.create({
     fontFamily: theme.fonts.regular,
     color: theme.colors.textDark,
   },
+  deleteText: {
+    fontSize: theme.sizes.sm,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.error,
+  },
   buttonContainer: {
-    flexDirection: "row", // ✅ Alinea los botones en fila
+    flexDirection: "row",
     justifyContent: "space-between",
-    marginTop: 16,
-    gap: 16,
+    marginTop: 20,
   },
 });
