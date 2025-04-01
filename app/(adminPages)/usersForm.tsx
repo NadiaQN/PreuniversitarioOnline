@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Alert, KeyboardAvoidingView, Platform } from "react-native";
+import { View, Text, StyleSheet, KeyboardAvoidingView, Platform, TouchableOpacity } from "react-native";
 import { useRouter, useLocalSearchParams } from "expo-router";
 import CustomInput from "../../components/Input";
 import CustomButton from "../../components/Button";
@@ -7,7 +7,8 @@ import MessageModal from "../../components/MessageModal";
 import { Picker } from "@react-native-picker/picker";
 import { theme } from "../../theme/theme";
 import { getUsers, addUser, updateUser } from "../../services/userService";
-import { UserRole, User } from "../../models/User";
+import { UserRole } from "../../models/User";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
 export default function UsersForm() {
   const router = useRouter();
@@ -75,12 +76,18 @@ export default function UsersForm() {
 
     setTimeout(() => {
       setModalVisible(false);
-      router.replace("/admin/users");
+      router.replace("./(adminPages)/users");
     }, 2000);
   };
 
   return (
     <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.container}>
+      
+      {/* 🔹 Botón Volver atrás */}
+      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
+        <Icon name="arrow-left" size={28} color={theme.colors.textDark} />
+      </TouchableOpacity>
+
       <Text style={styles.title}>{isEditing ? "Editar Usuario" : "Agregar Usuario"}</Text>
 
       <CustomInput label="Nombre Completo" placeholder="Ingrese el nombre" value={name} onChangeText={setName} />
@@ -99,9 +106,10 @@ export default function UsersForm() {
         </Picker>
       </View>
 
-      <View style={styles.containerButton}>
-        <CustomButton title={isEditing ? "Actualizar" : "Guardar"} onPress={handleSave} variant="primary"  />
-        <CustomButton title="Cancelar" onPress={() => router.back()} variant="error" outline  />
+      {/* 🔹 Botones alineados horizontalmente (invertidos) */}
+      <View style={styles.buttonContainer}>
+        <CustomButton title="Cancelar" onPress={() => router.back()} variant="error" outline />
+        <CustomButton title={isEditing ? "Actualizar" : "Guardar"} onPress={handleSave} variant="primary" />
       </View>
 
       <MessageModal visible={modalVisible} message={modalMessage} type={modalType} onClose={() => setModalVisible(false)} />
@@ -111,12 +119,16 @@ export default function UsersForm() {
 
 const styles = StyleSheet.create({
   container: {
-    width: "40%",
     flex: 1,
     padding: 20,
     backgroundColor: theme.colors.backgroundLight,
-    justifyContent: "center",
-    margin: "auto",
+    justifyContent: "flex-start",
+  },
+  backButton: {
+    position: "absolute",
+    top: 16,
+    left: 16,
+    zIndex: 1,
   },
   title: {
     fontSize: theme.sizes.lg,
@@ -142,7 +154,10 @@ const styles = StyleSheet.create({
     height: 48,
     fontSize: theme.sizes.md,
   },
-  containerButton: {
+  buttonContainer: {
+    flexDirection: "row",
     gap: 16,
+    marginTop: 16,
+    justifyContent: "space-between"
   },
 });

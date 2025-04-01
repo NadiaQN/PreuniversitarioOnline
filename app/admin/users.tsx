@@ -1,16 +1,21 @@
 import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, FlatList, Alert, TextInput, TouchableOpacity } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  TextInput,
+  TouchableOpacity,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { theme } from "../../theme/theme";
-import CustomButton from "../../components/Button";
-import { useDevice } from "../../hooks/useDevice";
 import { getUsers, deleteUser } from "../../services/userService";
 import MessageModal from "../../components/MessageModal";
 import { User } from "../../models/User";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import CustomButton from "../../components/Button";
 
 export default function ManageUsers() {
-  const { isMobile } = useDevice();
   const router = useRouter();
 
   const [users, setUsers] = useState<User[]>([]);
@@ -20,9 +25,13 @@ export default function ManageUsers() {
   const [modalMessage, setModalMessage] = useState("");
   const [modalType, setModalType] = useState<"success" | "error">("success");
 
+  const [confirmVisible, setConfirmVisible] = useState(false);
+  const [selectedUser, setSelectedUser] = useState<User | null>(null);
+
   useEffect(() => {
-    setUsers(getUsers());
-    setFilteredUsers(getUsers());
+    const data = getUsers();
+    setUsers(data);
+    setFilteredUsers(data);
   }, []);
 
   useEffect(() => {
@@ -38,30 +47,24 @@ export default function ManageUsers() {
     }
   }, [searchQuery, users]);
 
-  const handleDeleteUser = (userId: number) => {
-    Alert.alert("Confirmar eliminación", "¿Estás seguro de que deseas eliminar este usuario?", [
-      { text: "Cancelar", style: "cancel" },
-      {
-        text: "Eliminar",
-        style: "destructive",
-        onPress: () => {
-          deleteUser(userId);
-          const updatedUsers = getUsers();
-          setUsers(updatedUsers);
-          setFilteredUsers(updatedUsers);
-          setModalMessage("Usuario eliminado correctamente");
-          setModalType("success");
-          setModalVisible(true);
-        },
-      },
-    ]);
+  const handleDeleteUser = () => {
+    if (selectedUser) {
+      deleteUser(selectedUser.id);
+      const updatedUsers = getUsers();
+      setUsers(updatedUsers);
+      setFilteredUsers(updatedUsers);
+      setModalMessage("Usuario eliminado correctamente");
+      setModalType("success");
+      setModalVisible(true);
+      setSelectedUser(null);
+      setConfirmVisible(false);
+    }
   };
 
   return (
     <View style={styles.container}>
       <Text style={styles.title}>Gestión de Usuarios</Text>
 
-      {/* 🔹 Campo de búsqueda */}
       <TextInput
         style={styles.searchInput}
         placeholder="Buscar usuario por nombre o correo..."
@@ -69,9 +72,12 @@ export default function ManageUsers() {
         onChangeText={setSearchQuery}
       />
 
-      {/* 🔹 Botón para agregar usuario (CON TEXTO) */}
       <View style={styles.addButtonContainer}>
-        <CustomButton title="Agregar Usuario" onPress={() => router.push("../admin/usersForm")} variant="success" />
+        <CustomButton
+          title="Agregar Usuario"
+          onPress={() => router.push("/(adminPages)/usersForm")}
+          variant="success"
+        />
       </View>
 
       <FlatList
@@ -84,21 +90,70 @@ export default function ManageUsers() {
               <Text style={styles.userRole}>{item.role}</Text>
             </View>
 
-            {/* 🔹 Botones de acción SOLO ICONOS */}
             <View style={styles.buttonContainer}>
-              <TouchableOpacity onPress={() => router.push(`../admin/usersForm?userId=${item.id}`)} style={styles.iconButton}>
-                <Icon name="pencil-outline" size={24} color={theme.colors.primary} />
+              <TouchableOpacity
+                onPress={() =>
+                  router.push(`/(adminPages)/usersForm?userId=${item.id}`)
+                }
+                style={styles.iconButton}
+              >
+                <Icon
+                  name="pencil-outline"
+                  size={24}
+                  color={theme.colors.primary}
+                />
               </TouchableOpacity>
-              <TouchableOpacity onPress={() => handleDeleteUser(item.id)} style={styles.iconButton}>
-                <Icon name="trash-can-outline" size={24} color={theme.colors.error} />
+              <TouchableOpacity
+                onPress={() => {
+                  setSelectedUser(item);
+                  setConfirmVisible(true);
+                }}
+                style={styles.iconButton}
+              >
+                <Icon
+                  name="trash-can-outline"
+                  size={24}
+                  color={theme.colors.error}
+                />
               </TouchableOpacity>
             </View>
           </View>
         )}
       />
 
-      {/* 🔹 Modal de confirmación */}
-      <MessageModal visible={modalVisible} message={modalMessage} type={modalType} onClose={() => setModalVisible(false)} />
+      {/* 🔹 Modal de Confirmación */}
+      {selectedUser && confirmVisible && (
+        <View style={styles.modalOverlay}>
+          <View style={styles.confirmModal}>
+            <Text style={styles.confirmTitle}>¿Eliminar Usuario?</Text>
+            <Text style={styles.confirmText}>
+              ¿Deseas eliminar a {selectedUser.name}?
+            </Text>
+
+            <View style={styles.confirmButtons}>
+              <CustomButton
+                title="Cancelar"
+                onPress={() => setConfirmVisible(false)}
+                variant="error"
+                outline
+              />
+              <CustomButton
+                title="Eliminar"
+                onPress={handleDeleteUser}
+                variant="error"
+              />
+            </View>
+          </View>
+        </View>
+      )}
+
+      {/* 🔹 Modal de éxito */}
+      <MessageModal
+        visible={modalVisible}
+        message={modalMessage}
+        type={modalType}
+        onClose={() => setModalVisible(false)}
+      />
     </View>
   );
 }
@@ -161,5 +216,42 @@ const styles = StyleSheet.create({
   },
   iconButton: {
     padding: 8,
+  },
+  modalOverlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    width: "100%",
+    height: "100%",
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 100,
+  },
+  confirmModal: {
+    backgroundColor: theme.colors.textLight,
+    padding: 24,
+    borderRadius: 12,
+    width: "80%",
+    gap: 12,
+    elevation: 5,
+  },
+  confirmTitle: {
+    fontSize: theme.sizes.lg,
+    fontFamily: theme.fonts.bold,
+    color: theme.colors.error,
+    textAlign: "center",
+  },
+  confirmText: {
+    fontSize: theme.sizes.md,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textDark,
+    textAlign: "center",
+  },
+  confirmButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    gap: 12,
+    marginTop: 8,
   },
 });
