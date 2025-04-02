@@ -42,6 +42,6 @@ export async function removeFromStorage(key: string) {
 }
 
 export async function getUserFromStorage() {
-  const userData = await AsyncStorage.getItem("loggedUser");
+  const userData = await AsyncStorage.getItem("user");
   return userData ? JSON.parse(userData) : null;
 }
