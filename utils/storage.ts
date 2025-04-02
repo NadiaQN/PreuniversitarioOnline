@@ -40,3 +40,8 @@ export async function removeFromStorage(key: string) {
     console.error("Error al eliminar datos de AsyncStorage:", error);
   }
 }
+
+export async function getUserFromStorage() {
+  const userData = await AsyncStorage.getItem("loggedUser");
+  return userData ? JSON.parse(userData) : null;
+}

@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "PreuniversitarioOnline",
-    "slug": "PreuniversitarioOnline",
+    "slug": "preuniversitario-gratuito-online",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/icon.png",
@@ -37,6 +37,15 @@
     ],
     "experiments": {
       "typedRoutes": true
-    }
+    },
+    "extra": {
+      "router": {
+        "origin": false
+      },
+      "eas": {
+        "projectId": "1292ca28-a6f8-46bb-8238-08224a021b15"
+      }
+    },
+    "owner": "nadiaqn"
   }
 }
