@@ -11,7 +11,7 @@ export const mockHorarioTutores: HorarioTutores[] = [
   },
   {
     id: 2,
-    id_tutor: 2,
+    id_tutor: 5,
     fecha: "2025-04-06",
     hora_inicio: "15:00",
     hora_fin: "16:00",
@@ -19,10 +19,10 @@ export const mockHorarioTutores: HorarioTutores[] = [
   },
   {
     id: 3,
-    id_tutor: 2,
+    id_tutor: 5,
     fecha: "2025-04-07",
     hora_inicio: "09:00",
     hora_fin: "11:00",
-    disponibilidad: "No Disponible",
+    disponibilidad: "Disponible",
   },
 ];

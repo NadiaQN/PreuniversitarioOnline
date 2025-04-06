@@ -33,3 +33,10 @@ export function updateCourse(courseId: string, updatedData: Partial<Course>) {
 export function deleteCourse(courseId: string) {
   courses = courses.filter((course) => course.id !== courseId);
 }
+
+/**
+ * Obtener un curso por su ID
+ */
+export function getCourseById(courseId: string): Course | undefined {
+  return courses.find((course) => course.id === courseId);
+}
