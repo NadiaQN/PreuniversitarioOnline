@@ -1,13 +1,12 @@
-import React, { useEffect, useState } from "react";
+import React, { useState, useCallback } from "react";
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
-  useWindowDimensions,
 } from "react-native";
-import { useRouter } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { theme } from "../../theme/theme";
 import { getUserFromStorage } from "../../utils/storage";
@@ -15,92 +14,115 @@ import { getCoursesByStudent } from "../../services/studentCoursesService";
 import { StudentCourse } from "../../models/StudentCourse";
 import { Course } from "../../models/Courses";
 import { getCourseById } from "../../services/coursesService";
+import { useDevice } from "../../hooks/useDevice";
 
 export default function StudentCourses() {
   const router = useRouter();
-  const { width } = useWindowDimensions();
-  const [courses, setCourses] = useState<StudentCourse[]>([]);
   const [courseDetails, setCourseDetails] = useState<(Course & { progress: number })[]>([]);
+  const { isTabletOrDesktop } = useDevice();
 
-  useEffect(() => {
-    const fetchCourses = async () => {
-      const user = await getUserFromStorage();
-      if (!user) return;
+  useFocusEffect(
+    useCallback(() => {
+      const fetchCourses = async () => {
+        const user = await getUserFromStorage();
+        if (!user) return;
 
-      const cursosEstudiante: StudentCourse[] = getCoursesByStudent(user.id);
-      setCourses(cursosEstudiante);
+        const cursosEstudiante: StudentCourse[] = getCoursesByStudent(user.id);
 
-      const detalles = cursosEstudiante.map((sc) => {
-        const full = getCourseById(sc.courseId);
-        if (!full) return null;
-        return {
-          ...full,
-          progress: sc.progress / 100,
-        };
-      }).filter(Boolean) as (Course & { progress: number })[];
+        const detalles = cursosEstudiante.map((sc) => {
+          const full = getCourseById(sc.courseId);
+          if (!full) return null;
+          return {
+            ...full,
+            progress: sc.progress / 100,
+          };
+        }).filter(Boolean) as (Course & { progress: number })[];
 
-      setCourseDetails(detalles);
-    };
+        setCourseDetails(detalles);
+      };
 
-    fetchCourses();
-  }, []);
+      fetchCourses();
+    }, [])
+  );
 
   const renderItem = ({ item }: { item: Course & { progress: number } }) => (
     <View style={styles.card}>
-      <View style={styles.infoContainer}>
+      <View style={{ flex: 1 }}>
         <Text style={styles.courseName}>{item.name}</Text>
         <View style={styles.progressBar}>
           <View style={[styles.progressFill, { width: `${item.progress * 100}%` }]} />
         </View>
+        <TouchableOpacity
+          onPress={() => router.push(`/(studentPages)/courseDetail?courseId=${item.id}`)}
+          style={styles.viewMoreBtn}
+          accessibilityRole="button"
+          accessibilityLabel={`Ver más detalles del curso ${item.name}`}
+        >
+          <Text style={styles.viewMoreText}>
+            Ver más <Icon name="chevron-right" size={16} color={theme.colors.primary} />
+          </Text>
+        </TouchableOpacity>
       </View>
-      <TouchableOpacity
-        onPress={() => router.push(`/(studentPages)/courseDetail?courseId=${item.id}`)}
-      >
-        <Text style={styles.viewMore}>
-          Ver más <Icon name="chevron-right" size={18} />
-        </Text>
-      </TouchableOpacity>
     </View>
   );
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Progreso de mis cursos</Text>
-      <FlatList
-        data={courseDetails}
-        keyExtractor={(item) => item.id}
-        renderItem={renderItem}
-        contentContainerStyle={{ gap: 12, paddingBottom: 24 }}
-      />
+    <View style={styles.page}>
+      <View style={[styles.container, isTabletOrDesktop && styles.desktopContainer]}>
+        <Text style={styles.title}>Mis Cursos</Text>
+
+        {courseDetails.length === 0 ? (
+          <Text style={styles.noCourses}>Aún no tienes cursos asignados.</Text>
+        ) : (
+          <FlatList
+            data={courseDetails}
+            keyExtractor={(item) => item.id}
+            renderItem={renderItem}
+            contentContainerStyle={{ gap: 16, paddingBottom: 24 }}
+          />
+        )}
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 16,
-    backgroundColor: theme.colors.backgroundLight,
+  page: {
     flex: 1,
+    backgroundColor: theme.colors.backgroundLight,
+    padding: 16,
+  },
+  container: {
+    backgroundColor: theme.colors.textLight,
+    borderRadius: 12,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignSelf: "center",
+    width: "100%",
+  },
+  desktopContainer: {
+    width: "60%",
   },
   title: {
     fontSize: theme.sizes.lg,
     fontFamily: theme.fonts.bold,
     color: theme.colors.primary,
-    marginBottom: 16,
+    marginBottom: 24,
+    textAlign: "center",
+  },
+  noCourses: {
+    fontSize: theme.sizes.md,
+    color: theme.colors.textDark,
+    textAlign: "center",
+    marginTop: 24,
   },
   card: {
-    backgroundColor: theme.colors.textLight,
+    backgroundColor: theme.colors.backgroundLight,
     padding: 16,
     borderRadius: 12,
     borderWidth: 1,
     borderColor: theme.colors.border,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  infoContainer: {
-    flex: 1,
-    marginRight: 8,
   },
   courseName: {
     fontSize: theme.sizes.md,
@@ -109,18 +131,22 @@ const styles = StyleSheet.create({
     marginBottom: 8,
   },
   progressBar: {
-    height: 10,
-    backgroundColor: "#E0E0E0",
-    borderRadius: 8,
+    height: 8,
+    backgroundColor: theme.colors.border,
+    borderRadius: 4,
     overflow: "hidden",
+    marginBottom: 12,
   },
   progressFill: {
     height: "100%",
     backgroundColor: theme.colors.primary,
   },
-  viewMore: {
-    fontSize: theme.sizes.md,
-    fontFamily: theme.fonts.bold,
+  viewMoreBtn: {
+    alignSelf: "flex-start",
+  },
+  viewMoreText: {
     color: theme.colors.primary,
+    fontFamily: theme.fonts.regular,
+    fontSize: theme.sizes.sm,
   },
 });

@@ -10,6 +10,7 @@ export default function AdminTabs() {
         tabBarActiveTintColor: colors.primary,
         tabBarInactiveTintColor: colors.textDark,
         tabBarStyle: { backgroundColor: colors.backgroundLight },
+        headerShown: false,
       }}
     >
       <Tabs.Screen

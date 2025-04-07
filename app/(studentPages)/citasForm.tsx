@@ -11,7 +11,6 @@ import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { theme } from "../../theme/theme";
 import { useDevice } from "../../hooks/useDevice";
 import {
-  getDisponibilidadPorFecha,
   getFechasDisponibles,
   getHorasPorFecha,
   addCita,
@@ -38,7 +37,7 @@ export default function CitasForm() {
   const [modalMessage, setModalMessage] = useState("");
   const [modalType, setModalType] = useState<"success" | "error">("success");
 
-  const { isMobile } = useDevice();
+  const { isTabletOrDesktop } = useDevice();
   const router = useRouter();
 
   useEffect(() => {
@@ -95,93 +94,108 @@ export default function CitasForm() {
   };
 
   return (
-    <ScrollView style={styles.scroll}>
-      <View style={[styles.content, Platform.OS === "ios" && { marginTop: 40 }]}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Icon name="arrow-left" size={24} color={theme.colors.primary} />
-        </TouchableOpacity>
+    <ScrollView contentContainerStyle={styles.scroll}>
+      <View style={[styles.wrapper, isTabletOrDesktop && styles.desktopContainer]}>
+        <View style={styles.content}>
+          <TouchableOpacity
+            onPress={() => router.back()}
+            style={styles.backButton}
+            accessibilityRole="button"
+            accessibilityLabel="Volver a la pantalla anterior"
+          >
+            <Icon name="arrow-left" size={20} color={theme.colors.primary} />
+            <Text style={styles.backText}>Volver</Text>
+          </TouchableOpacity>
 
-        <Text style={styles.title}>Agendar Cita</Text>
+          <Text style={styles.title} accessibilityRole="header">
+            Agendar Cita
+          </Text>
 
-        <Text style={styles.label}>Selecciona un tutor</Text>
-        <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollRow}>
-          {tutores.map((tutor) => (
-            <TouchableOpacity
-              key={tutor.id}
-              style={[
-                styles.card,
-                selectedTutorId === tutor.id && styles.cardSelected,
-              ]}
-              onPress={() => setSelectedTutorId(tutor.id)}
-            >
-              <Icon name="account-circle-outline" size={32} color={theme.colors.primary} />
-              <Text style={styles.cardText}>{tutor.name}</Text>
-            </TouchableOpacity>
-          ))}
-        </ScrollView>
+          <Text style={styles.label}>Selecciona un tutor</Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollRow}>
+            {tutores.map((tutor) => (
+              <TouchableOpacity
+                key={tutor.id}
+                style={[styles.card, selectedTutorId === tutor.id && styles.cardSelected]}
+                onPress={() => setSelectedTutorId(tutor.id)}
+                accessibilityLabel={`Seleccionar tutor ${tutor.name}`}
+                accessibilityRole="button"
+              >
+                <Icon name="account-circle-outline" size={32} color={theme.colors.primary} />
+                <Text style={styles.cardText}>{tutor.name}</Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
 
-        {selectedTutorId && (
-          <>
-            <Text style={styles.label}>Selecciona una fecha</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollRow}>
-              {fechasDisponibles.map((fecha) => {
-                const date = new Date(fecha);
-                const dayName = date.toLocaleDateString("es-ES", { weekday: "short" });
-                const dayNumber = date.getDate();
-                const monthName = date.toLocaleDateString("es-ES", { month: "short" });
-                const isSelected = selectedFecha === fecha;
+          {selectedTutorId && (
+            <>
+              <Text style={styles.label}>Selecciona una fecha</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollRow}>
+                {fechasDisponibles.map((fecha) => {
+                  const date = new Date(fecha);
+                  const dayName = date.toLocaleDateString("es-ES", { weekday: "short" });
+                  const dayNumber = date.getDate();
+                  const monthName = date.toLocaleDateString("es-ES", { month: "short" });
+                  const isSelected = selectedFecha === fecha;
 
-                return (
-                  <TouchableOpacity
-                    key={fecha}
-                    style={[
-                      styles.dateCard,
-                      isSelected && styles.cardSelected,
-                    ]}
-                    onPress={() => setSelectedFecha(fecha)}
-                  >
-                    <Text style={styles.dayName}>{dayName}</Text>
-                    <Text style={styles.dayNumber}>{dayNumber}</Text>
-                    <Text style={styles.monthName}>{monthName}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </>
-        )}
+                  return (
+                    <TouchableOpacity
+                      key={fecha}
+                      style={[styles.dateCard, isSelected && styles.cardSelected]}
+                      onPress={() => setSelectedFecha(fecha)}
+                      accessibilityLabel={`Seleccionar fecha ${dayName} ${dayNumber} de ${monthName}`}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.dayName}>{dayName}</Text>
+                      <Text style={styles.dayNumber}>{dayNumber}</Text>
+                      <Text style={styles.monthName}>{monthName}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </>
+          )}
 
-        {selectedFecha && (
-          <>
-            <Text style={styles.label}>Selecciona una hora</Text>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollRow}>
-              {horasDisponibles.map((hora, index) => {
-                const horaTexto = `${hora.hora_inicio} - ${hora.hora_fin}`;
-                const seleccionada = selectedHora === hora.hora_inicio;
-                return (
-                  <TouchableOpacity
-                    key={index}
-                    style={[styles.timeCard, seleccionada && styles.cardSelected]}
-                    onPress={() => setSelectedHora(hora.hora_inicio)}
-                  >
-                    <Text style={styles.cardText}>{horaTexto}</Text>
-                  </TouchableOpacity>
-                );
-              })}
-            </ScrollView>
-          </>
-        )}
+          {selectedFecha && (
+            <>
+              <Text style={styles.label}>Selecciona una hora</Text>
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.scrollRow}>
+                {horasDisponibles.map((hora, index) => {
+                  const horaTexto = `${hora.hora_inicio} - ${hora.hora_fin}`;
+                  const seleccionada = selectedHora === hora.hora_inicio;
+                  return (
+                    <TouchableOpacity
+                      key={index}
+                      style={[styles.timeCard, seleccionada && styles.cardSelected]}
+                      onPress={() => setSelectedHora(hora.hora_inicio)}
+                      accessibilityLabel={`Seleccionar hora: ${horaTexto}`}
+                      accessibilityRole="button"
+                    >
+                      <Text style={styles.cardText}>{horaTexto}</Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+            </>
+          )}
 
-        <TouchableOpacity onPress={handleAgendar} style={styles.agendarBtn}>
-          <Icon name="calendar-plus" size={20} color="#fff" style={{ marginRight: 8 }} />
-          <Text style={styles.agendarBtnText}>Agendar</Text>
-        </TouchableOpacity>
+          <TouchableOpacity
+            onPress={handleAgendar}
+            style={styles.agendarBtn}
+            accessibilityLabel="Confirmar y agendar cita"
+            accessibilityRole="button"
+          >
+            <Icon name="calendar-plus" size={20} color="#fff" style={{ marginRight: 8 }} />
+            <Text style={styles.agendarBtnText}>Agendar</Text>
+          </TouchableOpacity>
 
-        <MessageModal
-          visible={modalVisible}
-          message={modalMessage}
-          type={modalType}
-          onClose={() => setModalVisible(false)}
-        />
+          <MessageModal
+            visible={modalVisible}
+            message={modalMessage}
+            type={modalType}
+            onClose={() => setModalVisible(false)}
+          />
+        </View>
       </View>
     </ScrollView>
   );
@@ -189,21 +203,42 @@ export default function CitasForm() {
 
 const styles = StyleSheet.create({
   scroll: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: theme.colors.backgroundLight,
+    padding: 16,
+  },
+  wrapper: {
+    alignSelf: "center",
+    width: "100%",
+  },
+  desktopContainer: {
+    width: "60%",
   },
   content: {
-    padding: 20,
-    paddingBottom: 40,
+    backgroundColor: theme.colors.textLight,
+    borderRadius: 12,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   backButton: {
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: 16,
+  },
+  backText: {
+    marginLeft: 6,
+    color: theme.colors.primary,
+    fontFamily: theme.fonts.regular,
+    fontSize: theme.sizes.sm,
   },
   title: {
     fontSize: theme.sizes.lg + 2,
     fontFamily: theme.fonts.bold,
     color: theme.colors.primary,
     marginBottom: 16,
+    textAlign: "center",
+    marginTop: 8,
   },
   label: {
     fontSize: theme.sizes.md,
@@ -225,6 +260,8 @@ const styles = StyleSheet.create({
     marginRight: 12,
     width: 120,
     height: 100,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   dateCard: {
     backgroundColor: theme.colors.textLight,
@@ -235,6 +272,8 @@ const styles = StyleSheet.create({
     marginRight: 12,
     width: 100,
     height: 100,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   timeCard: {
     backgroundColor: theme.colors.textLight,
@@ -244,9 +283,10 @@ const styles = StyleSheet.create({
     marginRight: 12,
     justifyContent: "center",
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: theme.colors.border,
   },
   cardSelected: {
-    backgroundColor: theme.colors.textLight,
     borderColor: theme.colors.primary,
     borderWidth: 2,
   },
@@ -280,9 +320,10 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 12,
+    paddingHorizontal: 24,
     borderRadius: 12,
     marginTop: 24,
-    width: 300
+    alignSelf: "center",
   },
   agendarBtnText: {
     color: "#fff",

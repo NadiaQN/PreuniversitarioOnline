@@ -6,21 +6,29 @@ export const mockStudentCourses: StudentCourse[] = [
     courseId: "1",
     courseName: "Matemáticas",
     progress: 75,
-    checkedMaterials: ["material1.pdf", "material2.pdf"],
+    checkedMaterials: [
+      "Guía de estudio de álgebra",
+      "Video explicativo: Funciones lineales",
+      "Resumen de geometría",
+    ],
   },
   {
     studentId: 3,
     courseId: "2",
     courseName: "Lenguaje",
-    progress: 40,
-    checkedMaterials: ["lectura1.pdf"],
+    progress: 66,
+    checkedMaterials: [
+      "Lectura de comprensión: El Quijote",
+      "Guía de conectores lógicos",
+    ],
   },
   {
     studentId: 3,
     courseId: "3",
     courseName: "Ciencias",
-    progress: 0,
-    checkedMaterials: [],
+    progress: 33,
+    checkedMaterials: [
+      "Infografía de biología celular",
+    ],
   },
 ];
-

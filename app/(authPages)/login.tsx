@@ -1,5 +1,12 @@
 import React, { useState, useEffect } from "react";
-import { View, Text, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  AccessibilityInfo,
+} from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { useRouter } from "expo-router";
 import CustomInput from "../../components/Input";
@@ -45,29 +52,73 @@ export default function LoginScreen() {
       setModalMessage("Inicio de sesión exitoso");
       setModalType("success");
       setModalVisible(true);
+      AccessibilityInfo.announceForAccessibility("Inicio de sesión exitoso");
 
       setTimeout(() => router.replace(roleRoutes[user.role]), 1000);
     } else {
       setModalMessage("Usuario o contraseña incorrectos");
       setModalType("error");
       setModalVisible(true);
+      AccessibilityInfo.announceForAccessibility("Usuario o contraseña incorrectos");
     }
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.wrapper}>
-      <View style={[styles.container, { width: isTabletOrDesktop ? "40%" : "100%" }]}>
-        <Text style={styles.title}>Inicio de Sesión</Text>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.wrapper}
+    >
+      <View
+        style={[styles.container, { width: isTabletOrDesktop ? "40%" : "100%" }]}
+        accessible
+        accessibilityLabel="Formulario de inicio de sesión"
+      >
+        <Text style={styles.title} accessibilityRole="header">
+          Inicio de Sesión
+        </Text>
 
-        <CustomInput label="Correo Electrónico" placeholder="Ingrese su correo" value={email} onChangeText={setEmail} />
-        <CustomInput label="Contraseña" placeholder="Ingrese su contraseña" value={password} onChangeText={setPassword} secureTextEntry />
+        <Text style={styles.subtitle}>
+          Ingresa tu correo y contraseña para continuar
+        </Text>
+
+        <CustomInput
+          label="Correo Electrónico"
+          placeholder="Ingrese su correo"
+          value={email}
+          onChangeText={setEmail}
+          accessibilityLabel="Campo de correo electrónico"
+        />
+        <CustomInput
+          label="Contraseña"
+          placeholder="Ingrese su contraseña"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          accessibilityLabel="Campo de contraseña"
+        />
 
         <View style={styles.containerButton}>
-          <CustomButton title="Ingresar" onPress={handleLogin} variant="primary" fullWidth />
-          <CustomButton title="Registrarse" onPress={() => router.push("/register")} variant="primary" outline fullWidth />
+          <CustomButton
+            title="Ingresar"
+            onPress={handleLogin}
+            variant="primary"
+            accessibilityLabel="Botón para ingresar al sistema"
+          />
+          <CustomButton
+            title="Registrarse"
+            onPress={() => router.push("/register")}
+            variant="primary"
+            outline
+            accessibilityLabel="Botón para ir al registro de nuevos usuarios"
+          />
         </View>
 
-        <MessageModal visible={modalVisible} message={modalMessage} type={modalType} onClose={() => setModalVisible(false)} />
+        <MessageModal
+          visible={modalVisible}
+          message={modalMessage}
+          type={modalType}
+          onClose={() => setModalVisible(false)}
+        />
       </View>
     </KeyboardAvoidingView>
   );
@@ -79,7 +130,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: theme.colors.backgroundLight,
-    paddingHorizontal: 16
+    paddingHorizontal: 16,
   },
   container: {
     padding: 24,
@@ -92,10 +143,18 @@ const styles = StyleSheet.create({
     fontSize: theme.sizes.lg,
     fontFamily: theme.fonts.bold,
     color: theme.colors.primary,
-    marginBottom: 16,
+    marginBottom: 8,
     textAlign: "center",
+  },
+  subtitle: {
+    fontSize: theme.sizes.sm,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textDark,
+    textAlign: "center",
+    marginBottom: 24,
   },
   containerButton: {
     gap: 16,
+    marginTop: 12,
   },
 });

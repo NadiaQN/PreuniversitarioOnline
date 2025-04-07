@@ -1,47 +1,83 @@
-import React, { useEffect, useState } from "react";
-import { View, Text, StyleSheet, Platform } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import Icon from "react-native-vector-icons/MaterialCommunityIcons";
-import CustomButton from "../../components/Button";
-import { User } from "../../models/User";
+import {
+  View,
+  Text,
+  StyleSheet,
+  TouchableOpacity,
+  useWindowDimensions,
+  Platform,
+} from "react-native";
+import { useEffect, useState } from "react";
+import { getUserFromStorage, removeFromStorage } from "../../utils/storage";
 import { theme } from "../../theme/theme";
-import { useDevice } from "../../hooks/useDevice";
+import { useRouter } from "expo-router";
+import Icon from "react-native-vector-icons/MaterialCommunityIcons";
+import ConfirmModal from "../../components/ConfirmModal";
 
-export default function PerfilScreen() {
-  const [user, setUser] = useState<User | null>(null);
-  const { isMobile, isTabletOrDesktop } = useDevice();
+export default function Perfil() {
+  const [nombre, setNombre] = useState("");
+  const [correo, setCorreo] = useState("");
+  const [rol, setRol] = useState("");
+  const [modalVisible, setModalVisible] = useState(false);
+  const router = useRouter();
+  const { width } = useWindowDimensions();
+  const isDesktop = width >= 768;
 
   useEffect(() => {
-    const fetchUser = async () => {
-      const storedUser = await AsyncStorage.getItem("user");
-      if (storedUser) setUser(JSON.parse(storedUser));
+    const loadUser = async () => {
+      const user = await getUserFromStorage();
+      if (user) {
+        setNombre(user.name);
+        setCorreo(user.email);
+        setRol(user.role);
+      }
     };
-    fetchUser();
+    loadUser();
   }, []);
 
-  if (!user) return null;
+  const handleCerrarSesion = () => {
+    setModalVisible(true);
+  };
+
+  const confirmCerrarSesion = async () => {
+    await removeFromStorage("user");
+    router.replace("/(authPages)/login");
+  };
 
   return (
-    <View style={[styles.container, { width: isTabletOrDesktop ? "60%" : "100%" }]}>
-      <Text style={styles.title}>Mi Perfil</Text>
+    <View style={styles.container}>
+      <Text style={styles.title} accessibilityRole="header">
+        Mi Perfil
+      </Text>
 
-      <View style={styles.infoRow}>
-        <Icon name="account" size={24} color={theme.colors.primary} />
-        <Text style={styles.infoText}>{user.name}</Text>
+      <View
+        style={[styles.card, isDesktop && styles.desktopCard]}
+        accessible
+        accessibilityLabel={`Nombre: ${nombre}. Correo electrónico: ${correo}.`}
+      >
+        <Text style={styles.label}>Nombre</Text>
+        <Text style={styles.value}>{nombre}</Text>
+
+        <Text style={styles.label}>Correo electrónico</Text>
+        <Text style={styles.value}>{correo}</Text>
       </View>
 
-      <View style={styles.infoRow}>
-        <Icon name="email-outline" size={24} color={theme.colors.primary} />
-        <Text style={styles.infoText}>{user.email}</Text>
-      </View>
+      <TouchableOpacity
+        style={styles.logoutButton}
+        onPress={handleCerrarSesion}
+        accessibilityLabel="Cerrar sesión"
+        accessibilityRole="button"
+      >
+        <View style={styles.logoutContent}>
+          <Icon name="logout" size={20} color={theme.colors.error} />
+          <Text style={styles.logoutButtonText}>Cerrar sesión</Text>
+        </View>
+      </TouchableOpacity>
 
-      <CustomButton
-        title="Editar Perfil"
-        iconName="pencil-outline"
-        onPress={() => {}}
-        variant="primary"
-        outline
-        style={{ marginTop: 24 }}
+      <ConfirmModal
+        visible={modalVisible}
+        message="¿Estás seguro que deseas cerrar sesión?"
+        onCancel={() => setModalVisible(false)}
+        onConfirm={confirmCerrarSesion}
       />
     </View>
   );
@@ -49,30 +85,60 @@ export default function PerfilScreen() {
 
 const styles = StyleSheet.create({
   container: {
-    alignSelf: "center",
-    backgroundColor: theme.colors.textLight,
-    padding: 24,
-    borderRadius: 12,
-    marginTop: Platform.OS === "ios" ? 60 : 30,
-    borderWidth: 1,
-    borderColor: theme.colors.border,
+    padding: 16,
+    paddingTop: Platform.OS === "ios" ? 60 : 16,
+    backgroundColor: theme.colors.backgroundLight,
+    flex: 1,
+    alignItems: "center",
   },
   title: {
     fontSize: theme.sizes.lg,
     fontFamily: theme.fonts.bold,
     color: theme.colors.primary,
-    marginBottom: 24,
-    textAlign: "center",
+    marginBottom: 16,
+    alignSelf: "center",
   },
-  infoRow: {
+  card: {
+    backgroundColor: theme.colors.textLight,
+    padding: 16,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    marginBottom: 24,
+    width: "100%",
+  },
+  desktopCard: {
+    maxWidth: "50%",
+  },
+  label: {
+    fontFamily: theme.fonts.bold,
+    fontSize: theme.sizes.sm,
+    color: theme.colors.textDark,
+    marginBottom: 4,
+  },
+  value: {
+    fontFamily: theme.fonts.regular,
+    fontSize: theme.sizes.md,
+    color: theme.colors.textDark,
+    marginBottom: 12,
+  },
+  logoutButton: {
+    borderWidth: 1,
+    borderColor: theme.colors.error,
+    padding: 12,
+    borderRadius: 8,
+    alignItems: "center",
+    width: "100%",
+    maxWidth: "50%",
+  },
+  logoutContent: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
-    gap: 12,
+    gap: 8,
   },
-  infoText: {
+  logoutButtonText: {
+    color: theme.colors.error,
+    fontFamily: theme.fonts.bold,
     fontSize: theme.sizes.md,
-    fontFamily: theme.fonts.regular,
-    color: theme.colors.textDark,
   },
 });

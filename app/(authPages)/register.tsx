@@ -1,5 +1,12 @@
 import React, { useState } from "react";
-import { View, Text, StyleSheet, KeyboardAvoidingView, Platform } from "react-native";
+import {
+  View,
+  Text,
+  StyleSheet,
+  KeyboardAvoidingView,
+  Platform,
+  AccessibilityInfo,
+} from "react-native";
 import { useRouter } from "expo-router";
 import { useDevice } from "../../hooks/useDevice";
 import CustomInput from "../../components/Input";
@@ -7,8 +14,8 @@ import CustomButton from "../../components/Button";
 import MessageModal from "../../components/MessageModal";
 import { Picker } from "@react-native-picker/picker";
 import { theme } from "../../theme/theme";
-import { addMockUser } from "../../mocks/users";
 import { UserRole } from "../../models/User";
+import { addUser } from "@/services/userService";
 
 export default function RegisterScreen() {
   const router = useRouter();
@@ -26,6 +33,7 @@ export default function RegisterScreen() {
       setModalMessage("Todos los campos son obligatorios");
       setModalType("error");
       setModalVisible(true);
+      AccessibilityInfo.announceForAccessibility("Todos los campos son obligatorios");
       return;
     }
 
@@ -33,6 +41,7 @@ export default function RegisterScreen() {
       setModalMessage("Ingrese un correo válido");
       setModalType("error");
       setModalVisible(true);
+      AccessibilityInfo.announceForAccessibility("Correo inválido");
       return;
     }
 
@@ -40,30 +49,68 @@ export default function RegisterScreen() {
       setModalMessage("La contraseña debe tener al menos 6 caracteres");
       setModalType("error");
       setModalVisible(true);
+      AccessibilityInfo.announceForAccessibility("Contraseña demasiado corta");
       return;
     }
 
-    addMockUser(name, email, password, role);
-
+    addUser(name, email, password, role);
     setModalMessage("Usuario registrado correctamente");
     setModalType("success");
     setModalVisible(true);
+    AccessibilityInfo.announceForAccessibility("Usuario registrado correctamente");
 
-    setTimeout(() => router.replace("/login"), 5000); // Redirigir después del mensaje
+    setTimeout(() => router.replace("/login"), 5000);
   };
 
   return (
-    <KeyboardAvoidingView behavior={Platform.OS === "ios" ? "padding" : "height"} style={styles.wrapper}>
-      <View style={[styles.container, isTabletOrDesktop ? styles.containerDesktop : styles.containerMobile]}>
-        <Text style={styles.title}>Registro de Usuario</Text>
+    <KeyboardAvoidingView
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      style={styles.wrapper}
+    >
+      <View
+        style={[
+          styles.container,
+          isTabletOrDesktop ? styles.containerDesktop : styles.containerMobile,
+        ]}
+        accessible
+        accessibilityLabel="Formulario de registro de usuario"
+      >
+        <Text style={styles.title} accessibilityRole="header">
+          Registro de Usuario
+        </Text>
+        <Text style={styles.subtitle}>Completa el formulario para crear tu cuenta</Text>
 
-        <CustomInput label="Nombre Completo" placeholder="Ingrese su nombre" value={name} onChangeText={setName} />
-        <CustomInput label="Correo Electrónico" placeholder="Ingrese su correo" value={email} onChangeText={setEmail} />
-        <CustomInput label="Contraseña" placeholder="Ingrese su contraseña" value={password} onChangeText={setPassword} secureTextEntry />
+        <CustomInput
+          label="Nombre Completo"
+          placeholder="Ingrese su nombre"
+          value={name}
+          onChangeText={setName}
+          accessibilityLabel="Campo de nombre completo"
+        />
+        <CustomInput
+          label="Correo Electrónico"
+          placeholder="Ingrese su correo"
+          value={email}
+          onChangeText={setEmail}
+          accessibilityLabel="Campo de correo electrónico"
+        />
+        <CustomInput
+          label="Contraseña"
+          placeholder="Ingrese su contraseña"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+          accessibilityLabel="Campo de contraseña"
+        />
 
         <Text style={styles.label}>Selecciona tu rol</Text>
         <View style={styles.pickerContainer}>
-          <Picker selectedValue={role} onValueChange={(itemValue) => setRole(itemValue as UserRole)} style={styles.picker}>
+          <Picker
+            selectedValue={role}
+            onValueChange={(itemValue) => setRole(itemValue as UserRole)}
+            style={styles.picker}
+            accessibilityLabel="Selector de rol de usuario"
+          >
             <Picker.Item label="Estudiante" value="Estudiante" />
             <Picker.Item label="Tutor" value="Tutor" />
             <Picker.Item label="Administrador" value="Administrador" />
@@ -71,11 +118,27 @@ export default function RegisterScreen() {
         </View>
 
         <View style={styles.containerButton}>
-          <CustomButton title="Registrarse" onPress={handleRegister} variant="primary" fullWidth />
-          <CustomButton title="Ya tengo cuenta" onPress={() => router.push("/login")} variant="primary" outline fullWidth />
+          <CustomButton
+            title="Registrarse"
+            onPress={handleRegister}
+            variant="primary"
+            accessibilityLabel="Botón para completar el registro"
+          />
+          <CustomButton
+            title="Ya tengo cuenta"
+            onPress={() => router.push("/login")}
+            variant="primary"
+            outline
+            accessibilityLabel="Botón para ir a la pantalla de inicio de sesión"
+          />
         </View>
 
-        <MessageModal visible={modalVisible} message={modalMessage} type={modalType} onClose={() => setModalVisible(false)} />
+        <MessageModal
+          visible={modalVisible}
+          message={modalMessage}
+          type={modalType}
+          onClose={() => setModalVisible(false)}
+        />
       </View>
     </KeyboardAvoidingView>
   );
@@ -87,7 +150,7 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     backgroundColor: theme.colors.backgroundLight,
-    marginHorizontal: 16
+    marginHorizontal: 16,
   },
   container: {
     width: "100%",
@@ -107,8 +170,15 @@ const styles = StyleSheet.create({
     fontSize: theme.sizes.lg,
     fontFamily: theme.fonts.bold,
     color: theme.colors.primary,
-    marginBottom: 16,
+    marginBottom: 8,
     textAlign: "center",
+  },
+  subtitle: {
+    fontSize: theme.sizes.sm,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textDark,
+    textAlign: "center",
+    marginBottom: 24,
   },
   label: {
     fontSize: theme.sizes.md,
@@ -129,5 +199,6 @@ const styles = StyleSheet.create({
   },
   containerButton: {
     gap: 16,
+    marginTop: 12,
   },
 });

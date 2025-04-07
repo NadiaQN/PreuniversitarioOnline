@@ -1,5 +1,5 @@
 import { useEffect, useState, useCallback } from "react";
-import { useFocusEffect } from "expo-router";
+import { useFocusEffect, useRouter } from "expo-router";
 import {
   View,
   Text,
@@ -10,28 +10,23 @@ import {
   useWindowDimensions,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
-import { useRouter } from "expo-router";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Calendar } from "react-native-calendars";
 import { useDevice } from "../../hooks/useDevice";
 import { theme } from "../../theme/theme";
 import { getUserFromStorage } from "../../utils/storage";
 import { getCitasByUser } from "../../services/citaService";
-import { getCoursesByStudent, getLastCourseByStudent } from "../../services/studentCoursesService";
-import { loadCourses } from "../../services/coursesService";
+import {
+  getCoursesByStudent,
+  getLastCourseByStudent,
+  getCheckedMaterials,
+} from "../../services/studentCoursesService";
+import { getCourseById } from "../../services/coursesService";
 import { StudentCourse } from "../../models/StudentCourse";
 import { Cita } from "../../models/Cita";
 import ProgressBar from "../../components/ProgressBar";
 import CustomButton from "@/components/Button";
-import { getCourseById } from "../../services/coursesService";
-
-const frasesMotivacionales = [
-  "Nunca dejes de aprender.",
-  "¡Cada paso cuenta!",
-  "Tú puedes lograrlo.",
-  "El esfuerzo de hoy es el éxito de mañana.",
-  "Estás más cerca de lo que crees.",
-];
+import { mockMotivationalQuotes } from "../../mocks/mockMotivationalQuotes";
 
 const diasSemana = [
   "domingo",
@@ -49,64 +44,46 @@ export default function StudentDashboard() {
   const { width } = useWindowDimensions();
 
   const [studentName, setStudentName] = useState("Estudiante");
-  const [studentId, setStudentId] = useState<number | null>(null);
   const [proximaCita, setProximaCita] = useState<Cita | null>(null);
-  const [frase, setFrase] = useState("");
   const [cursosAsignados, setCursosAsignados] = useState<StudentCourse[]>([]);
   const [ultimoCurso, setUltimoCurso] = useState<(StudentCourse & { courseName: string }) | null>(null);
   const [selectedDates, setSelectedDates] = useState({});
-  const [citasFuturas, setCitasFuturas] = useState<Cita[]>([]);
+  const [quote, setQuote] = useState<{ text: string; author: string } | null>(null);
 
   useFocusEffect(
     useCallback(() => {
       const loadData = async () => {
         const user = await getUserFromStorage();
         if (!user) return;
-
+  
         setStudentName(user.name);
-
+  
         const cursos = getCoursesByStudent(user.id);
         setCursosAsignados(cursos);
-
-        const futuras = getCitasByUser(user.id, "estudiante").filter(
-          (c) => new Date(c.fecha) >= new Date()
-        );
-        setCitasFuturas(futuras);
-        setProximaCita(futuras[0] ?? null);
-
-
-        // Último curso revisado
+  
         if (cursos.length > 0) {
           const lastCourse = getLastCourseByStudent(user.id, cursos[0].courseId);
           if (lastCourse) {
             const fullCourse = getCourseById(lastCourse.courseId);
             if (fullCourse) {
               setUltimoCurso({
-                studentId: lastCourse.studentId,
-                courseId: lastCourse.courseId,
-                courseName: lastCourse.courseName,
-                checkedMaterials: lastCourse.checkedMaterials,
-                progress: lastCourse.progress / 100,
-                ...fullCourse,
+                ...lastCourse,
+                courseName: fullCourse.name,
               });
             }
           }
         }
-
-        // Citas
+  
         const citas = getCitasByUser(user.id, "estudiante");
-        const citasFuturas = citas.filter(
-          (c) => new Date(c.fecha) >= new Date()
-        );
-
-        const citaProxima = citasFuturas.sort(
+        const futuras = citas.filter((c) => new Date(c.fecha) >= new Date());
+  
+        const citaProxima = futuras.sort(
           (a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
         )[0];
         setProximaCita(citaProxima ?? null);
-
-        // Marcar todas las citas futuras en el calendario
+  
         const marcadas: any = {};
-        citasFuturas.forEach((cita) => {
+        futuras.forEach((cita) => {
           marcadas[cita.fecha] = {
             selected: true,
             marked: true,
@@ -114,54 +91,35 @@ export default function StudentDashboard() {
           };
         });
         setSelectedDates(marcadas);
-
-        // Frase motivacional
-        setFrase(
-          frasesMotivacionales[
-          Math.floor(Math.random() * frasesMotivacionales.length)
-          ]
-        );
+  
+        const random = mockMotivationalQuotes[Math.floor(Math.random() * mockMotivationalQuotes.length)];
+        setQuote(random);
       };
-
+  
       loadData();
     }, [])
   );
-
-
-
-
-  const selectedDate = proximaCita
-    ? {
-      [proximaCita.fecha]: {
-        selected: true,
-        marked: true,
-        selectedColor: theme.colors.primary,
-      },
-    }
-    : {};
+  ;
+  
 
   const formatProximasCitas = (): string[] => {
-    if (!citasFuturas.length) return [];
+    if (!proximaCita) return [];
 
-    return citasFuturas.slice(0, 3).map((cita) => {
-      const [year, month, day] = cita.fecha.split("-");
-      const fecha = new Date(Number(year), Number(month) - 1, Number(day));
-      const dia = diasSemana[fecha.getDay()];
-      return `Tu cita será el día ${dia} ${fecha.getDate()} a las ${cita.hora} hrs.`;
-    });
+    const [year, month, day] = proximaCita.fecha.split("-");
+    const fecha = new Date(Number(year), Number(month) - 1, Number(day));
+    const dia = diasSemana[fecha.getDay()];
+
+    return [
+      `Tu cita será el día ${dia} ${fecha.getDate()} a las ${proximaCita.hora} hr.`,
+    ];
   };
-
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.wrapper}>
       <View style={[styles.header, Platform.OS === "ios" && styles.iosMargin]}>
-        <Text style={styles.greeting}>Hola, {studentName} 👋</Text>
-        <TouchableOpacity onPress={async () => {
-          await AsyncStorage.removeItem("user");
-          router.replace("/login");
-        }}>
-          <Icon name="logout" size={24} color={theme.colors.error} />
-        </TouchableOpacity>
+        <Text style={styles.greeting} accessibilityRole="header">
+          Hola, {studentName} 👋
+        </Text>
       </View>
 
       <Text style={styles.subtitle}>¿Qué te gustaría hacer hoy?</Text>
@@ -174,20 +132,29 @@ export default function StudentDashboard() {
                 router.push(`/(studentPages)/courseDetail?courseId=${ultimoCurso?.courseId}`)
               }
               style={styles.cuadro}
+              accessibilityLabel={`Ir al curso ${ultimoCurso?.courseName}`}
+              accessibilityRole="button"
             >
-              <Text style={styles.sectionTitle}>Último Curso Revisado</Text>
+              <Text style={styles.sectionTitle} accessibilityRole="header">
+                Último Curso Revisado
+              </Text>
               <Text style={styles.textInfo}>{ultimoCurso?.courseName}</Text>
-              <ProgressBar progress={ultimoCurso?.progress || 0} />
+              <ProgressBar progress={(ultimoCurso?.progress / 100) || 0} />
             </TouchableOpacity>
-
           )}
 
           <View style={styles.cuadro}>
-            <Text style={styles.sectionTitle}>Cursos Asignados</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header">
+              Cursos Asignados
+            </Text>
             {cursosAsignados.map((curso) => (
               <View key={curso.courseId} style={styles.cursoItem}>
                 <Text style={styles.textInfo}>{curso.courseName}</Text>
-                <TouchableOpacity onPress={() => router.push(`/(studentPages)/courseDetail?courseId=${curso.courseId}`)}>
+                <TouchableOpacity
+                  onPress={() => router.push(`/(studentPages)/courseDetail?courseId=${curso.courseId}`)}
+                  accessibilityLabel={`Ver más detalles del curso ${curso.courseName}`}
+                  accessibilityRole="button"
+                >
                   <Text style={styles.verMasMobile}>Ver más</Text>
                 </TouchableOpacity>
               </View>
@@ -195,32 +162,48 @@ export default function StudentDashboard() {
           </View>
 
           <View style={styles.cuadro}>
-            <Text style={styles.sectionTitle}>Agendar Cita</Text>
+            <Text style={styles.sectionTitle} accessibilityRole="header">
+              Agendar Cita
+            </Text>
             <Text style={styles.textInfo}>Selecciona un tutor disponible y elige un horario.</Text>
             <CustomButton
               title="Agendar"
               iconName="calendar-plus"
               onPress={() => router.push("/(studentPages)/citasForm")}
               style={styles.agendarBtnMobile}
+              accessibilityLabel="Agendar una nueva cita"
+              accessibilityRole="button"
             />
           </View>
 
           {proximaCita && (
             <>
-              <Text style={styles.sectionTitle}>Próxima Cita</Text>
-              <Calendar
-                markedDates={selectedDates}
-                style={styles.calendar}
-                theme={{
-                  todayTextColor: theme.colors.primary,
-                  arrowColor: theme.colors.primary,
-                }}
-              />
+              <Text style={styles.sectionTitle} accessibilityRole="header">
+                Próxima Cita
+              </Text>
+              <View
+                accessible={true}
+                accessibilityLabel="Calendario con tus citas agendadas. Los días marcados indican citas futuras."
+              >
+                <Calendar
+                  markedDates={selectedDates}
+                  style={styles.calendar}
+                  theme={{
+                    todayTextColor: theme.colors.primary,
+                    arrowColor: theme.colors.primary,
+                  }}
+                />
+              </View>
 
               {formatProximasCitas().map((texto, index) => (
-                <Text key={index} style={styles.textInfo}>{texto}</Text>
+                <Text
+                  key={index}
+                  style={styles.textInfo}
+                  accessibilityLabel={`Texto informativo: ${texto}`}
+                >
+                  {texto}
+                </Text>
               ))}
-
             </>
           )}
         </>
@@ -234,20 +217,31 @@ export default function StudentDashboard() {
                   router.push(`/(studentPages)/courseDetail?courseId=${ultimoCurso?.courseId}`)
                 }
                 style={styles.cuadro}
+                accessibilityLabel={`Ir al curso ${ultimoCurso?.courseName}`}
+                accessibilityRole="button"
               >
-                <Text style={styles.sectionTitle}>Último Curso Revisado</Text>
+                <Text style={styles.sectionTitle} accessibilityRole="header">
+                  Último Curso Revisado
+                </Text>
                 <Text style={styles.textInfo}>{ultimoCurso?.courseName}</Text>
-                <ProgressBar progress={ultimoCurso?.progress || 0} />
+                <ProgressBar progress={(ultimoCurso?.progress / 100) || 0} />
               </TouchableOpacity>
-
             )}
 
             <View style={styles.cuadro}>
-              <Text style={styles.sectionTitle}>Cursos Asignados</Text>
+              <Text style={styles.sectionTitle} accessibilityRole="header">
+                Cursos Asignados
+              </Text>
               {cursosAsignados.map((curso) => (
                 <View key={curso.courseId} style={styles.cursoItem}>
                   <Text style={styles.textInfo}>{curso.courseName}</Text>
-                  <TouchableOpacity onPress={() => router.push(`/(studentPages)/courseDetail?courseId=${curso.courseId}`)}>
+                  <TouchableOpacity
+                    onPress={() =>
+                      router.push(`/(studentPages)/courseDetail?courseId=${curso.courseId}`)
+                    }
+                    accessibilityLabel={`Ver más detalles del curso ${curso.courseName}`}
+                    accessibilityRole="button"
+                  >
                     <Text style={styles.verMas}>Ver más</Text>
                   </TouchableOpacity>
                 </View>
@@ -255,7 +249,9 @@ export default function StudentDashboard() {
             </View>
 
             <View style={styles.cuadro}>
-              <Text style={styles.sectionTitle}>Agendar Cita</Text>
+              <Text style={styles.sectionTitle} accessibilityRole="header">
+                Agendar Cita
+              </Text>
               <Text style={styles.textInfo}>
                 Selecciona un tutor disponible y elige un horario.
               </Text>
@@ -264,6 +260,8 @@ export default function StudentDashboard() {
                   title="Agendar"
                   iconName="calendar-plus"
                   onPress={() => router.push("/(studentPages)/citasForm")}
+                  accessibilityLabel="Agendar una nueva cita"
+                  accessibilityRole="button"
                 />
               </View>
             </View>
@@ -271,29 +269,43 @@ export default function StudentDashboard() {
 
           {/* Columna derecha */}
           {proximaCita && (
-            <View
-              style={[
-                styles.rightColumn,
-                width < 900 && styles.rightColumnStack,
-              ]}
-            >
+            <View style={[styles.rightColumn, width < 900 && styles.rightColumnStack]}>
               <View style={{ width: width < 900 ? "100%" : "50%", paddingRight: 16 }}>
-                <Calendar
-                  markedDates={selectedDates}
-                  style={styles.calendar}
-                  theme={{
-                    todayTextColor: theme.colors.primary,
-                    arrowColor: theme.colors.primary,
-                  }}
-                />
-
+                <View
+                  accessible={true}
+                  accessibilityLabel="Calendario con tus citas agendadas. Los días marcados indican citas futuras."
+                >
+                  <Calendar
+                    markedDates={selectedDates}
+                    style={styles.calendar}
+                    theme={{
+                      todayTextColor: theme.colors.primary,
+                      arrowColor: theme.colors.primary,
+                    }}
+                  />
+                </View>
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={styles.sectionTitle}>Próxima Cita</Text>
+                <Text style={styles.sectionTitle} accessibilityRole="header">
+                  Próxima Cita
+                </Text>
                 {formatProximasCitas().map((texto, index) => (
-                  <Text key={index} style={styles.textInfo}>{texto}</Text>
+                  <Text
+                    key={index}
+                    style={styles.textInfo}
+                    accessibilityLabel={`Texto informativo: ${texto}`}
+                  >
+                    {texto}
+                  </Text>
                 ))}
-                <Text style={styles.frase}>"{frase}"</Text>
+                {quote && (
+                  <Text
+                    style={styles.quote}
+                    accessibilityLabel={`Frase motivacional: ${quote.text}, dicha por ${quote.author}`}
+                  >
+                    “{quote.text}” — <Text style={styles.quoteAuthor}>{quote.author}</Text>
+                  </Text>
+                )}
               </View>
             </View>
           )}
@@ -401,18 +413,23 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     marginBottom: 16,
   },
-  frase: {
-    fontStyle: "italic",
-    fontSize: theme.sizes.md,
-    fontFamily: theme.fonts.regular,
-    color: "#999",
-    marginTop: 16,
-  },
   mobileBox: {
     backgroundColor: theme.colors.textLight,
     padding: 16,
     borderRadius: 12,
     marginBottom: 16,
   },
+  quote: {
+    fontStyle: "italic",
+    color: theme.colors.border,
+    marginTop: 24,
+    textAlign: "left",
+    fontSize: theme.sizes.md,
+    flexWrap: "wrap",
+    fontFamily: theme.fonts.regular,
+  },
+  quoteAuthor: {
+    fontWeight: "bold",
+    fontFamily: theme.fonts.regular,
+  },
 });
-

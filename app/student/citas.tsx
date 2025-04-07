@@ -21,7 +21,7 @@ import { LINK_MEET } from "../../utils/constants";
 import { getUsers } from "@/services/userService";
 
 export default function Citas() {
-  const { isMobile } = useDevice();
+  const { isTabletOrDesktop } = useDevice();
   const [citas, setCitas] = useState<Cita[]>([]);
   const [usuarios, setUsuarios] = useState<User[]>([]);
   const [loggedUser, setLoggedUser] = useState<User | null>(null);
@@ -65,171 +65,181 @@ export default function Citas() {
     }
   };
 
+  const formatDate = (fecha: string) => {
+    const d = new Date(fecha);
+    return `${d.getDate().toString().padStart(2, "0")}-${(d.getMonth() + 1)
+      .toString()
+      .padStart(2, "0")}-${d.getFullYear()}`;
+  };
+
+  const isPast = (fecha: string) => {
+    return new Date(fecha).getTime() < new Date().getTime();
+  };
+
   return (
-    <ScrollView style={styles.wrapper}>
-      <View style={styles.container}>
-        {citas.map((cita) => {
-          const isPast =
-            new Date(cita.fecha).getTime() < new Date().setHours(0, 0, 0, 0);
-          return (
+    <ScrollView contentContainerStyle={styles.page}>
+      <View style={[styles.container, isTabletOrDesktop && styles.desktopContainer]}>
+        <Text style={styles.title} accessibilityRole="header">
+          Mis Citas
+        </Text>
+
+        {citas.length === 0 ? (
+          <Text style={styles.noCitas}>Aún no tienes citas agendadas.</Text>
+        ) : (
+          citas.map((cita) => (
             <View
               key={cita.id}
-              style={[styles.card, isPast && styles.faded]}
+              style={[
+                styles.card,
+                isPast(cita.fecha) && cita.estado !== "Cancelada" && { opacity: 0.5 },
+              ]}
             >
-              <View style={styles.cardHeader}>
-                <Text style={styles.cardTitle}>
-                  Cita con {getNombreTutor(cita.id_tutor)}
+              <View style={styles.row}>
+                <Icon name="calendar" size={18} color={theme.colors.primary} />
+                <Text style={styles.cardText}>
+                  {formatDate(cita.fecha)} a las {cita.hora} hr.
                 </Text>
-                <Icon name="calendar-check-outline" size={24} color={theme.colors.primary} />
               </View>
 
-              <Text style={styles.cardText}>
-                <Text style={styles.cardLabel}>Fecha: </Text>
-                {cita.fecha}
-              </Text>
-              <Text style={styles.cardText}>
-                <Text style={styles.cardLabel}>Hora: </Text>
-                {cita.hora} hrs.
-              </Text>
+              <View style={styles.row}>
+                <Icon name="account" size={18} color={theme.colors.primary} />
+                <Text style={styles.cardText}>{getNombreTutor(cita.id_tutor)}</Text>
+              </View>
 
-              <View style={styles.badgeContainer}>
+              <View style={styles.row}>
                 <View style={[styles.badge, getBadgeStyle(cita.estado)]}>
                   <Text style={styles.badgeText}>{cita.estado}</Text>
                 </View>
               </View>
 
-              <View style={styles.cardFooter}>
-                {cita.estado !== "Cancelada" && (
-                  <TouchableOpacity
-                    onPress={() => Linking.openURL(cita.meetLink)}
-                    style={styles.joinButton}
-                  >
-                    <Icon name="video" size={18} color={theme.colors.textLight} />
-                    <Text style={styles.joinButtonText}>Unirse a la cita</Text>
-                  </TouchableOpacity>
-                )}
-                {cita.estado === "Pendiente" && !isPast && (
-                  <TouchableOpacity
-                    onPress={() => handleCancelarCita(cita.id)}
-                    style={styles.cancelButton}
-                  >
-                    <Text style={styles.cancelButtonText}>Cancelar cita</Text>
-                  </TouchableOpacity>
-                )}
+              <View style={styles.row}>
+                <TouchableOpacity
+                  onPress={() => Linking.openURL(LINK_MEET)}
+                  style={styles.meetButton}
+                  accessibilityLabel={`Abrir reunión de cita el ${formatDate(cita.fecha)} a las ${cita.hora} horas con ${getNombreTutor(cita.id_tutor)}`}
+                  accessibilityRole="button"
+                >
+                  <Icon name="video" size={16} color="#fff" />
+                  <Text style={styles.meetButtonText}>Ir a la reunión</Text>
+                </TouchableOpacity>
               </View>
+
+              {cita.estado !== "Cancelada" && !isPast(cita.fecha) && (
+                <TouchableOpacity
+                  onPress={() => handleCancelarCita(cita.id)}
+                  style={styles.cancelBtn}
+                  accessibilityLabel={`Cancelar cita con ${getNombreTutor(cita.id_tutor)} el ${formatDate(cita.fecha)} a las ${cita.hora} horas`}
+                  accessibilityRole="button"
+                >
+                  <Text style={styles.cancelText}>Cancelar cita</Text>
+                </TouchableOpacity>
+              )}
             </View>
-          );
-        })}
+          ))
+        )}
       </View>
     </ScrollView>
   );
 }
 
 const styles = StyleSheet.create({
-  wrapper: {
-    flex: 1,
+  page: {
+    flexGrow: 1,
     backgroundColor: theme.colors.backgroundLight,
+    padding: 16,
   },
   container: {
-    padding: 16,
-    paddingBottom: 40,
-  },
-  card: {
     backgroundColor: theme.colors.textLight,
     borderRadius: 12,
-    padding: 16,
-    marginBottom: 16,
-    elevation: 2,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    alignSelf: "center",
+    width: "100%",
   },
-  faded: {
-    opacity: 0.4,
+  desktopContainer: {
+    width: "60%",
   },
-  cardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: 8,
-  },
-  cardTitle: {
-    fontSize: theme.sizes.md + 1,
+  title: {
+    fontSize: theme.sizes.lg,
     fontFamily: theme.fonts.bold,
     color: theme.colors.primary,
+    marginBottom: 24,
+    textAlign: "center",
   },
-  cardText: {
+  noCitas: {
     fontSize: theme.sizes.md,
-    fontFamily: theme.fonts.regular,
     color: theme.colors.textDark,
-    marginBottom: 4,
+    textAlign: "center",
+    marginTop: 24,
   },
-  cardLabel: {
-    fontFamily: theme.fonts.bold,
-    color: theme.colors.textDark,
+  card: {
+    backgroundColor: theme.colors.backgroundLight,
+    borderRadius: 12,
+    padding: 16,
+    borderWidth: 1,
+    borderColor: theme.colors.border,
+    marginBottom: 16,
   },
-  text: {
-    fontSize: theme.sizes.md,
-    fontFamily: theme.fonts.regular,
-    color: theme.colors.textDark,
-  },
-  bold: {
-    fontFamily: theme.fonts.bold,
-    color: theme.colors.textDark,
-  },
-  badgeContainer: {
+  row: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
-    marginTop: 4,
+    gap: 8,
+    marginBottom: 8,
+  },
+  cardText: {
+    fontSize: theme.sizes.sm,
+    fontFamily: theme.fonts.regular,
+    color: theme.colors.textDark,
+  },
+  link: {
+    color: theme.colors.primary,
+    fontSize: theme.sizes.sm,
+    fontFamily: theme.fonts.regular,
   },
   badge: {
     paddingVertical: 4,
-    paddingHorizontal: 10,
-    borderRadius: 6,
+    paddingHorizontal: 8,
+    borderRadius: 8,
     alignSelf: "flex-start",
   },
   badgeText: {
+    color: "#fff",
     fontSize: theme.sizes.sm,
-    fontFamily: theme.fonts.bold,
-    color: theme.colors.textLight,
+    fontFamily: theme.fonts.regular,
   },
   badgeConfirmada: {
-    backgroundColor: theme.colors.success,
+    backgroundColor: "#4CAF50",
   },
   badgeCancelada: {
-    backgroundColor: theme.colors.error,
+    backgroundColor: "#F44336",
   },
   badgePendiente: {
-    backgroundColor: theme.colors.warning,
+    backgroundColor: "#FFC107",
   },
-  cardFooter: {
-    flexDirection: "row",
-    gap: 12,
+  cancelBtn: {
     marginTop: 12,
-    flexWrap: "wrap",
+    alignSelf: "flex-start",
   },
-  joinButton: {
+  cancelText: {
+    color: theme.colors.error,
+    fontFamily: theme.fonts.regular,
+    fontSize: theme.sizes.sm,
+  },
+  meetButton: {
+    backgroundColor: theme.colors.primary,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: theme.colors.primary,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: 8,
+    gap: 6,
+    alignSelf: "flex-start",
+    marginTop: 8,
   },
-  joinButtonText: {
-    color: theme.colors.textLight,
-    fontSize: theme.sizes.md,
-    fontFamily: theme.fonts.bold,
-    marginLeft: 6,
-  },
-  cancelButton: {
-    paddingVertical: 8,
-    paddingHorizontal: 12,
-    borderRadius: 8,
-    borderWidth: 1,
-    borderColor: theme.colors.error,
-    backgroundColor: theme.colors.backgroundLight,
-  },
-  cancelButtonText: {
-    color: theme.colors.error,
-    fontFamily: theme.fonts.bold,
+  meetButtonText: {
+    color: "#fff",
+    fontSize: theme.sizes.sm,
+    fontFamily: theme.fonts.regular,
   },
 });

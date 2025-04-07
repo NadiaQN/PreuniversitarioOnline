@@ -69,7 +69,7 @@ export function toggleMaterialAsChecked(studentId: number, courseId: string, mat
   if (course) {
     const total = course.materials.length;
     const revisados = studentCourse.checkedMaterials.length;
-    studentCourse.progress = Number(((revisados / total) * 100).toFixed(0));
+    studentCourse.progress = Number(((revisados / total)).toFixed(0));
   }
 }
 

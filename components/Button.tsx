@@ -1,5 +1,5 @@
 import React from "react";
-import { TouchableOpacity, Text, StyleSheet, ViewStyle } from "react-native";
+import { TouchableOpacity, Text, StyleSheet, ViewStyle, AccessibilityRole } from "react-native";
 import { theme } from "../theme/theme";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 
@@ -13,9 +13,12 @@ interface ButtonProps {
   iconName?: string;
   iconOnly?: boolean;
   disabled?: boolean; // 🔹 Agregamos la propiedad
+  accessibilityLabel?: string;
+  accessibilityRole?: AccessibilityRole;
+
 }
 
-export default function CustomButton({ title, onPress, variant = "primary", outline = false, width, style, iconName, iconOnly, disabled = false }: ButtonProps) {
+export default function CustomButton({ title, onPress, variant = "primary", outline = false, width, style, iconName, iconOnly, disabled = false, accessibilityLabel, accessibilityRole }: ButtonProps) {
   const textColor = outline ? theme.colors[variant] : theme.colors.textLight;
   const borderColor = outline ? theme.colors[variant] : "transparent";
 
@@ -37,6 +40,8 @@ export default function CustomButton({ title, onPress, variant = "primary", outl
       ]}
       onPress={!disabled ? onPress : undefined} // 🔹 Deshabilita la acción si el botón está inactivo
       disabled={disabled} // 🔹 Aplica la propiedad disabled
+      accessibilityLabel={accessibilityLabel}
+      accessibilityRole={accessibilityRole || "button"}
     >
       {iconName && <Icon name={iconName} size={20} color={textColor} />}
       {!iconOnly && <Text style={[styles.text, { color: textColor }]}>{title}</Text>}
