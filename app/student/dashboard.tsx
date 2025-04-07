@@ -54,6 +54,8 @@ export default function StudentDashboard() {
   const [frase, setFrase] = useState("");
   const [cursosAsignados, setCursosAsignados] = useState<StudentCourse[]>([]);
   const [ultimoCurso, setUltimoCurso] = useState<(StudentCourse & { courseName: string }) | null>(null);
+  const [selectedDates, setSelectedDates] = useState({});
+  const [citasFuturas, setCitasFuturas] = useState<Cita[]>([]);
 
   useFocusEffect(
     useCallback(() => {
@@ -66,7 +68,14 @@ export default function StudentDashboard() {
         const cursos = getCoursesByStudent(user.id);
         setCursosAsignados(cursos);
 
-        // Obtener último curso revisado (en este caso usamos el primero como ejemplo)
+        const futuras = getCitasByUser(user.id, "estudiante").filter(
+          (c) => new Date(c.fecha) >= new Date()
+        );
+        setCitasFuturas(futuras);
+        setProximaCita(futuras[0] ?? null);
+
+
+        // Último curso revisado
         if (cursos.length > 0) {
           const lastCourse = getLastCourseByStudent(user.id, cursos[0].courseId);
           if (lastCourse) {
@@ -84,18 +93,40 @@ export default function StudentDashboard() {
           }
         }
 
+        // Citas
         const citas = getCitasByUser(user.id, "estudiante");
-        const futura = citas.find((c) => new Date(c.fecha) >= new Date());
-        setProximaCita(futura ?? null);
+        const citasFuturas = citas.filter(
+          (c) => new Date(c.fecha) >= new Date()
+        );
 
+        const citaProxima = citasFuturas.sort(
+          (a, b) => new Date(a.fecha).getTime() - new Date(b.fecha).getTime()
+        )[0];
+        setProximaCita(citaProxima ?? null);
+
+        // Marcar todas las citas futuras en el calendario
+        const marcadas: any = {};
+        citasFuturas.forEach((cita) => {
+          marcadas[cita.fecha] = {
+            selected: true,
+            marked: true,
+            selectedColor: theme.colors.primary,
+          };
+        });
+        setSelectedDates(marcadas);
+
+        // Frase motivacional
         setFrase(
-          frasesMotivacionales[Math.floor(Math.random() * frasesMotivacionales.length)]
+          frasesMotivacionales[
+          Math.floor(Math.random() * frasesMotivacionales.length)
+          ]
         );
       };
 
       loadData();
     }, [])
   );
+
 
 
 
@@ -109,13 +140,17 @@ export default function StudentDashboard() {
     }
     : {};
 
-  const formatDateInfo = () => {
-    if (!proximaCita) return null;
-    const [year, month, day] = proximaCita.fecha.split("-");
-    const fecha = new Date(Number(year), Number(month) - 1, Number(day));
-    const dia = diasSemana[fecha.getDay()];
-    return `Tu próxima cita será el día ${dia} ${fecha.getDate()} a las ${proximaCita.hora} hrs.`;
+  const formatProximasCitas = (): string[] => {
+    if (!citasFuturas.length) return [];
+
+    return citasFuturas.slice(0, 3).map((cita) => {
+      const [year, month, day] = cita.fecha.split("-");
+      const fecha = new Date(Number(year), Number(month) - 1, Number(day));
+      const dia = diasSemana[fecha.getDay()];
+      return `Tu cita será el día ${dia} ${fecha.getDate()} a las ${cita.hora} hrs.`;
+    });
   };
+
 
   return (
     <ScrollView style={styles.scroll} contentContainerStyle={styles.wrapper}>
@@ -174,14 +209,18 @@ export default function StudentDashboard() {
             <>
               <Text style={styles.sectionTitle}>Próxima Cita</Text>
               <Calendar
-                markedDates={selectedDate}
+                markedDates={selectedDates}
                 style={styles.calendar}
                 theme={{
                   todayTextColor: theme.colors.primary,
                   arrowColor: theme.colors.primary,
                 }}
               />
-              <Text style={styles.textInfo}>{formatDateInfo()}</Text>
+
+              {formatProximasCitas().map((texto, index) => (
+                <Text key={index} style={styles.textInfo}>{texto}</Text>
+              ))}
+
             </>
           )}
         </>
@@ -240,17 +279,20 @@ export default function StudentDashboard() {
             >
               <View style={{ width: width < 900 ? "100%" : "50%", paddingRight: 16 }}>
                 <Calendar
-                  markedDates={selectedDate}
+                  markedDates={selectedDates}
                   style={styles.calendar}
                   theme={{
                     todayTextColor: theme.colors.primary,
                     arrowColor: theme.colors.primary,
                   }}
                 />
+
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.sectionTitle}>Próxima Cita</Text>
-                <Text style={styles.textInfo}>{formatDateInfo()}</Text>
+                {formatProximasCitas().map((texto, index) => (
+                  <Text key={index} style={styles.textInfo}>{texto}</Text>
+                ))}
                 <Text style={styles.frase}>"{frase}"</Text>
               </View>
             </View>

@@ -21,6 +21,7 @@ import { getUsers } from "../../services/userService";
 import { User } from "../../models/User";
 import MessageModal from "../../components/MessageModal";
 import { useRouter } from "expo-router";
+import { LINK_MEET } from "../../utils/constants";
 
 export default function CitasForm() {
   const [studentId, setStudentId] = useState<number | null>(null);
@@ -83,7 +84,7 @@ export default function CitasForm() {
       fecha: selectedFecha,
       hora: selectedHora,
       estado: "Pendiente",
-      meetLink: "https://meet.google.com/hjr-foog-zgj",
+      meetLink: LINK_MEET,
     });
 
     setModalMessage("¡Cita agendada con éxito!");

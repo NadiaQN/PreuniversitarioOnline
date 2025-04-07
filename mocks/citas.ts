@@ -1,3 +1,4 @@
+import { LINK_MEET } from "@/utils/constants";
 import { Cita } from "../models/Cita";
 
 export const mockCitas: Cita[] = [
@@ -8,7 +9,7 @@ export const mockCitas: Cita[] = [
     fecha: "2025-04-15",
     hora: "10:00",
     estado: "Pendiente",
-    meetLink: "https://meet.google.com/falso-codigo",
+    meetLink: LINK_MEET,
   },
   {
     id: 2,
@@ -17,6 +18,6 @@ export const mockCitas: Cita[] = [
     fecha: "2025-04-16",
     hora: "15:00",
     estado: "Confirmada",
-    meetLink: "https://meet.google.com/falso-codigo",
+    meetLink: LINK_MEET,
   },
 ];

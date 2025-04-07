@@ -1,0 +1,1 @@
+export const LINK_MEET = "http://meet.google.com/hjr-foog-zgj";

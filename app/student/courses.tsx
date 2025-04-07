@@ -1,49 +1,60 @@
-import React from "react";
+import React, { useEffect, useState } from "react";
 import {
   View,
   Text,
   StyleSheet,
   FlatList,
   TouchableOpacity,
+  useWindowDimensions,
 } from "react-native";
 import { useRouter } from "expo-router";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import { theme } from "../../theme/theme";
-
-// 🔹 Este mock puede ser reemplazado luego
-const mockStudentCourses = [
-  {
-    id: "1",
-    name: "Matemáticas",
-    hasMaterials: true,
-  },
-  {
-    id: "2",
-    name: "Lenguaje",
-    hasMaterials: false,
-  },
-  {
-    id: "3",
-    name: "Ciencias",
-    hasMaterials: true,
-  },
-];
+import { getUserFromStorage } from "../../utils/storage";
+import { getCoursesByStudent } from "../../services/studentCoursesService";
+import { StudentCourse } from "../../models/StudentCourse";
+import { Course } from "../../models/Courses";
+import { getCourseById } from "../../services/coursesService";
 
 export default function StudentCourses() {
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const [courses, setCourses] = useState<StudentCourse[]>([]);
+  const [courseDetails, setCourseDetails] = useState<(Course & { progress: number })[]>([]);
 
-  const renderItem = ({ item }: { item: typeof mockStudentCourses[0] }) => (
+  useEffect(() => {
+    const fetchCourses = async () => {
+      const user = await getUserFromStorage();
+      if (!user) return;
+
+      const cursosEstudiante: StudentCourse[] = getCoursesByStudent(user.id);
+      setCourses(cursosEstudiante);
+
+      const detalles = cursosEstudiante.map((sc) => {
+        const full = getCourseById(sc.courseId);
+        if (!full) return null;
+        return {
+          ...full,
+          progress: sc.progress / 100,
+        };
+      }).filter(Boolean) as (Course & { progress: number })[];
+
+      setCourseDetails(detalles);
+    };
+
+    fetchCourses();
+  }, []);
+
+  const renderItem = ({ item }: { item: Course & { progress: number } }) => (
     <View style={styles.card}>
       <View style={styles.infoContainer}>
         <Text style={styles.courseName}>{item.name}</Text>
-        <Text style={styles.materialText}>
-          {item.hasMaterials
-            ? "Incluye materiales disponibles"
-            : "Sin materiales cargados"}
-        </Text>
+        <View style={styles.progressBar}>
+          <View style={[styles.progressFill, { width: `${item.progress * 100}%` }]} />
+        </View>
       </View>
       <TouchableOpacity
-        onPress={() => router.push(`/student/courseDetail?id=${item.id}`)}
+        onPress={() => router.push(`/(studentPages)/courseDetail?courseId=${item.id}`)}
       >
         <Text style={styles.viewMore}>
           Ver más <Icon name="chevron-right" size={18} />
@@ -54,12 +65,12 @@ export default function StudentCourses() {
 
   return (
     <View style={styles.container}>
-      <Text style={styles.title}>Cursos Disponibles</Text>
+      <Text style={styles.title}>Progreso de mis cursos</Text>
       <FlatList
-        data={mockStudentCourses}
+        data={courseDetails}
         keyExtractor={(item) => item.id}
         renderItem={renderItem}
-        contentContainerStyle={{ gap: 12 }}
+        contentContainerStyle={{ gap: 12, paddingBottom: 24 }}
       />
     </View>
   );
@@ -89,17 +100,23 @@ const styles = StyleSheet.create({
   },
   infoContainer: {
     flex: 1,
+    marginRight: 8,
   },
   courseName: {
     fontSize: theme.sizes.md,
     fontFamily: theme.fonts.bold,
     color: theme.colors.textDark,
-    marginBottom: 4,
+    marginBottom: 8,
   },
-  materialText: {
-    fontSize: theme.sizes.sm,
-    fontFamily: theme.fonts.regular,
-    color: theme.colors.textLight,
+  progressBar: {
+    height: 10,
+    backgroundColor: "#E0E0E0",
+    borderRadius: 8,
+    overflow: "hidden",
+  },
+  progressFill: {
+    height: "100%",
+    backgroundColor: theme.colors.primary,
   },
   viewMore: {
     fontSize: theme.sizes.md,

@@ -31,6 +31,15 @@ export default function StudentTabs() {
         }}
       />
       <Tabs.Screen
+        name="citas"
+        options={{
+          title: "Citas",
+          tabBarIcon: ({ color, size }) => (
+            <Icon name="calendar-clock-outline" size={size} color={color} />
+          ),
+        }}
+      />
+      <Tabs.Screen
         name="perfil"
         options={{
           title: "Perfil",
